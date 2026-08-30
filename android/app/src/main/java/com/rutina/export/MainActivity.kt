@@ -85,6 +85,21 @@ class MainActivity : ComponentActivity() {
         pintar()
     }
 
+    /** Si el trabajo diario esta encolado. Se consulta a WorkManager, que es
+     *  asincrono, asi que la pantalla pinta con el ultimo valor conocido y se
+     *  repinta cuando llega la respuesta. */
+    private var trabajoProgramado = false
+
+    private fun refrescarProgramado() {
+        lifecycleScope.launch {
+            val v = TrabajoDiario.programado(this@MainActivity)
+            if (v != trabajoProgramado) {
+                trabajoProgramado = v
+                if (::raiz.isInitialized && raiz.childCount > 0) pintar()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dias = intent.getIntExtra("dias", dias).coerceIn(1, 400)
@@ -120,6 +135,7 @@ class MainActivity : ComponentActivity() {
             concedidos = HealthConnectClient.getOrCreate(this@MainActivity)
                 .permissionController.getGrantedPermissions()
             if (token.isNotEmpty()) TrabajoDiario.programar(this@MainActivity)
+            trabajoProgramado = TrabajoDiario.programado(this@MainActivity)
             pintar()
             when {
                 // el PC solo quiere el fichero; ya lo sube el mismo
@@ -152,6 +168,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // la accesibilidad se activa en Ajustes, fuera de la app
         if (::raiz.isInitialized && raiz.childCount > 0) pintar()
+        refrescarProgramado()
     }
 
     // ------------------------------------------------------------- pantalla
@@ -227,7 +244,7 @@ class MainActivity : ComponentActivity() {
             if (repo.isEmpty() || token.isEmpty()) decir("Configura antes GitHub, más abajo")
             else exportar(subir = true)
         })
-        if (!TrabajoDiario.programado(this) && token.isNotEmpty()) {
+        if (!trabajoProgramado && token.isNotEmpty()) {
             raiz.addView(parrafo("Si esto se repite, quita la app del ahorro de " +
                     "batería: Ajustes → Batería → Límites de uso en segundo plano → " +
                     "Apps que no se pondrán en reposo. Samsung detiene los trabajos " +
@@ -421,7 +438,7 @@ class MainActivity : ComponentActivity() {
         if (token.isEmpty()) return "sin token, no está programada"
         // preguntar a Android, no al reloj: un force-stop cancela el trabajo y
         // la pantalla seguia prometiendo una ejecucion que no iba a ocurrir
-        if (!TrabajoDiario.programado(this)) return "NO PROGRAMADA · abre la app para reactivarla"
+        if (!trabajoProgramado) return "NO PROGRAMADA · abre la app para reactivarla"
         val ahora = LocalDateTime.now()
         var p = ahora.toLocalDate().atTime(TrabajoDiario.HORA)
         if (!p.isAfter(ahora)) p = p.plusDays(1)

@@ -1,7 +1,6 @@
 package com.rutina.export
 
 import android.app.KeyguardManager
-import android.app.job.JobScheduler
 import android.content.Context
 import android.util.Log
 import androidx.work.Constraints
@@ -13,6 +12,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.flow.first
 import com.rutina.export.Ajustes.dias
 import com.rutina.export.Ajustes.repo
 import com.rutina.export.Ajustes.ruta
@@ -132,14 +132,29 @@ class TrabajoDiario(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             Log.i(TAG, "Prueba del trabajo diario encolada")
         }
 
-        fun programado(ctx: Context): Boolean = try {
-            // Se pregunta al JobScheduler de Android y no a WorkManager: su API
-            // devuelve un ListenableFuture, que obligaria a arrastrar Guava
-            // entera por una comprobacion. WorkManager programa POR DEBAJO con
-            // el JobScheduler, asi que mirar ahi da la misma respuesta y es
-            // sincrono.
-            val js = ctx.getSystemService(JobScheduler::class.java)
-            js?.allPendingJobs?.isNotEmpty() == true
+        suspend fun programado(ctx: Context): Boolean = try {
+            // Se le pregunta a WorkManager, no al JobScheduler.
+            //
+            // Antes se miraba `JobScheduler.getAllPendingJobs()`, con el
+            // razonamiento de que WorkManager programa por debajo con el
+            // JobScheduler y asi la comprobacion salia sincrona. Desde Android
+            // 14 eso da SIEMPRE que no. WorkManager 2.9+ mete sus trabajos en
+            // un namespace propio del JobScheduler ("androidx.work..."), y
+            // getAllPendingJobs() solo devuelve los del namespace por defecto:
+            // el trabajo estaba encolado y la pantalla anunciaba "NO
+            // PROGRAMADA".
+            //
+            // Se podria pedir ese namespace por su nombre, pero es un detalle
+            // interno de WorkManager que puede cambiar de version. Preguntarle
+            // a WorkManager es la respuesta autoritativa.
+            //
+            // Se usa la variante ...Flow y no la normal a proposito: la normal
+            // devuelve un ListenableFuture de Guava, que no esta en el
+            // classpath (y meter Guava por una comprobacion no compensa). La
+            // de Flow la da work-runtime-ktx, que ya es dependencia.
+            WorkManager.getInstance(ctx)
+                .getWorkInfosForUniqueWorkFlow(TRABAJO).first()
+                .any { !it.state.isFinished }
         } catch (e: Exception) {
             false
         }
