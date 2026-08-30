@@ -96,13 +96,18 @@ recorrido por su interfaz él solo.
 ### 4. El resto
 
 ```bash
-cp config.example.toml config.toml     # claves de Hevy y Notion
+cp config.example.toml config.toml     # pon aquí tus claves de Hevy y Notion
 pip install -r requirements.txt
-python -m rutina init-notion --parent-page <id de una página>
+python scripts/configurar.py           # el resto lo hace él
 ```
 
-Y en los Secrets del repositorio: `HEVY_API_KEY`, `NOTION_TOKEN` y los ids que
-`init-notion` deja escritos en tu `config.toml`.
+`configurar.py` crea las cinco bases de Notion, sube los ocho secretos al
+repositorio, pone las variables y enciende Pages. Es idempotente: se puede
+repetir sin miedo, y con `--dry-run` dice qué haría sin tocar nada.
+
+Sin él habría que copiar ocho identificadores a mano de `config.toml` a la
+pantalla de Secrets de GitHub, que es la parte más tediosa de montar esto y
+donde más se equivoca uno.
 
 ## Cómo funciona una vez montado
 
