@@ -4,6 +4,8 @@
 a web dashboard — automatically, every day, without paying a subscription.**
 
 > 🇪🇸 [Léelo en español](README.es.md) · code comments and inline docs are in Spanish.
+>
+> **[Live demo](https://florintodor.dev/demo/rutina-export/en/)** (made-up data) · **[Project page](https://florintodor.dev/en/proyectos/rutina-export/)**
 
 Apps that export Health Connect on a schedule charge for it. This one doesn't —
 and not out of generosity. The automation they charge for is the

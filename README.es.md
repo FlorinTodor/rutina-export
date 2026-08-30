@@ -1,6 +1,8 @@
 # rutina-export
 
 > 🇬🇧 [Read this in English](README.md)
+>
+> **[Demo en vivo](https://florintodor.dev/demo/rutina-export/)** (datos inventados) · **[Ficha del proyecto](https://florintodor.dev/proyectos/rutina-export/)**
 
 **Saca tus datos de Health Connect, Samsung Health, FitDays y Hevy a Notion y a
 un dashboard web, solo, cada día, sin pagar suscripciones.**
