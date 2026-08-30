@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="verde">#5FD3A0</color>
+    <color name="sobre_verde">#00382A</color>
+    <color name="ok">#5FD3A0</color>
+    <color name="falta">#F2B8B5</color>
+</resources>

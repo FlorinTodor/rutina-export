@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lee Health Connect y deja un JSON en /sdcard/Documents/rutina/.
+     No se publica en Play Store: se instala con `adb install`, asi que no
+     hace falta el formulario de aprobacion de apps de salud de Google. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- actividad -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.READ_FLOORS_CLIMBED" />
+    <!-- sueno -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <!-- constantes vitales -->
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY" />
+    <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" />
+    <uses-permission android:name="android.permission.health.READ_VO2_MAX" />
+    <!-- composicion corporal -->
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
+    <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
+    <uses-permission android:name="android.permission.health.READ_BONE_MASS" />
+    <uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS" />
+    <uses-permission android:name="android.permission.health.READ_BODY_WATER_MASS" />
+    <uses-permission android:name="android.permission.health.READ_BASAL_METABOLIC_RATE" />
+    <uses-permission android:name="android.permission.health.READ_HEIGHT" />
+
+    <!-- Leer con la app cerrada. Es EL permiso por el que cobran las apps
+         del ramo, y es gratis: lo que lo gatea es la revision de Play Store,
+         no un pago. Como esta se instala por ADB, no hay revision. -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
+
+    <!-- para subir a GitHub sin pasar por el PC -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- en Android 13 y anteriores Health Connect es una app aparte -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+        <package android:name="cn.fitdays.fitdays" />
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@android:drawable/stat_sys_upload"
+        android:label="@string/app_name"
+        android:theme="@style/Tema">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/app_name"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Health Connect exige poder mostrar por que pides los datos.
+                 Hasta Android 13 se pide con esta accion. -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+
+        <!-- Desde Android 14 la misma pantalla se pide por otra via -->
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity
+            android:name=".MedidasActivity"
+            android:exported="false"
+            android:label="Medidas"
+            android:windowSoftInputMode="adjustResize"
+            android:parentActivityName=".MainActivity" />
+
+        <!-- Maneja la interfaz de FitDays para exportar los pesajes. Limitado
+             a esa app en res/xml/accesibilidad.xml: no ve ninguna otra. -->
+        <service
+            android:name=".FitdaysServicio"
+            android:exported="false"
+            android:label="Rutina · exportar FitDays"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accesibilidad" />
+        </service>
+
+    </application>
+</manifest>

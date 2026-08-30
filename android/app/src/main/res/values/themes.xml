@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DayNight: la app se abre a las 20:45 y muchas veces de noche. -->
+    <style name="Tema" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/verde</item>
+        <item name="colorOnPrimary">@color/sobre_verde</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+    </style>
+</resources>

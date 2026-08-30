@@ -1,0 +1,156 @@
+name: Sincronizar rutina
+
+on:
+  # Cuando el movil sube a data/inbox/ se sincroniza en ese momento, sin
+  # esperar al cron. Es lo que hace que el PC deje de hacer falta de verdad:
+  # sin esto el dato se quedaba esperando a las 21:00, y el cron de GitHub se
+  # retrasa y a veces se salta ejecuciones.
+  #
+  # No se muerde la cola: GitHub NO relanza workflows por los push hechos con
+  # GITHUB_TOKEN, y el commit de este workflow (que borra el inbox) es uno de
+  # esos. El del movil usa un token propio, asi que ese si dispara.
+  push:
+    paths:
+      # lo que sube el movil
+      - "data/inbox/**"
+      # y lo que cambia lo que se ve: si se toca el codigo, la plantilla o el
+      # historico, la pagina publicada se queda vieja hasta la noche. Paso de
+      # verdad: se borraron unos datos de prueba y siguieron viendose en la
+      # web porque nadie regeneraba el HTML.
+      - "src/**"
+      - "templates/**"
+      - "data/raw/**"
+
+  schedule:
+    # El cron de GitHub solo entiende UTC y no sabe de horario de verano.
+    # Las 21:00 de Madrid son las 19:00 UTC en verano (CEST) y las 20:00 en
+    # invierno (CET), asi que se disparan las dos y el propio job descarta
+    # la que no toca comprobando la hora real en Europe/Madrid.
+    # A y 7, no en punto: la hora exacta es cuando mas cron programados hay
+    # en GitHub y es cuando mas se retrasan o se saltan ejecuciones.
+    - cron: "7 19 * * *"
+    - cron: "7 20 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Ejecutar aunque no sean las 21:00 en Madrid"
+        type: boolean
+        default: true
+
+concurrency:
+  group: sync-notion
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ¿Toca ejecutar?
+        id: gate
+        env:
+          FORCE: ${{ inputs.force }}
+          CRON: ${{ github.event.schedule }}
+        run: |
+          # Se decide por QUÉ cron disparó, no por la hora a la que llegó.
+          # GitHub se retrasa con frecuencia, y mirar el reloj hacía que una
+          # ejecución tardía cayera fuera de la ventana y se descartara.
+          OFFSET=$(TZ=Europe/Madrid date +%z)      # +0200 verano, +0100 invierno
+          if [ "$OFFSET" = "+0100" ]; then ESPERADO="7 20 * * *"; else ESPERADO="7 19 * * *"; fi
+          echo "Madrid: $(TZ=Europe/Madrid date '+%H:%M %Z') (UTC$OFFSET)"
+          echo "Disparado por: '${CRON:-manual}'  ·  el que toca hoy: '$ESPERADO'"
+          if [ "$FORCE" = "true" ] || [ -z "$CRON" ] || [ "$CRON" = "$ESPERADO" ]; then
+            echo "run=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=no" >> "$GITHUB_OUTPUT"
+            echo "Este cron cubre la otra mitad del año. Nada que hacer."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'yes'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.run == 'yes'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        if: steps.gate.outputs.run == 'yes'
+        run: pip install -r requirements.txt
+
+      - name: Importar lo que haya subido el movil
+        if: steps.gate.outputs.run == 'yes'
+        env:
+          PYTHONPATH: src
+        # El movil sube los ficheros crudos a data/inbox/ con la API de
+        # contenidos de GitHub. El import y la fusion con el historico se
+        # hacen aqui, en Python, que es donde ya vivian: el movil entrega
+        # datos, no decide nada sobre ellos.
+        run: |
+          hubo=no
+          if [ -f data/inbox/health.json ]; then
+            echo "::group::Health Connect desde el movil"
+            python -m rutina import-health data/inbox/health.json
+            echo "::endgroup::"
+            rm -f data/inbox/health.json
+            hubo=si
+          fi
+          if [ -f data/inbox/medidas.json ]; then
+            echo "::group::Medidas de cinta desde el movil"
+            python -m rutina import-medidas data/inbox/medidas.json
+            echo "::endgroup::"
+            rm -f data/inbox/medidas.json
+            hubo=si
+          fi
+          if [ -f data/inbox/fitdays.csv ]; then
+            echo "::group::FitDays desde el movil"
+            python -m rutina import-fitdays data/inbox/fitdays.csv
+            echo "::endgroup::"
+            rm -f data/inbox/fitdays.csv
+            hubo=si
+          fi
+          if [ "$hubo" = no ]; then
+            echo "El movil no ha subido nada; sigo con lo que hay en el repositorio"
+          fi
+
+      - name: Sincronizar datos a Notion
+        if: steps.gate.outputs.run == 'yes'
+        env: &creds
+          PYTHONPATH: src
+          HEVY_MODE: ${{ vars.HEVY_MODE || 'api' }}
+          HEVY_API_KEY: ${{ secrets.HEVY_API_KEY }}
+          # Corte por cambio de gimnasio. Se puede mover desde las variables
+          # del repositorio sin tocar el código.
+          HEVY_DESDE: ${{ vars.HEVY_DESDE }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NOTION_DB_DIAS: ${{ secrets.NOTION_DB_DIAS }}
+          NOTION_DB_ENTRENOS: ${{ secrets.NOTION_DB_ENTRENOS }}
+          NOTION_DB_SERIES: ${{ secrets.NOTION_DB_SERIES }}
+          NOTION_DB_EJERCICIOS: ${{ secrets.NOTION_DB_EJERCICIOS }}
+          NOTION_DB_MEDIDAS: ${{ secrets.NOTION_DB_MEDIDAS }}
+          DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+        run: python -m rutina sync
+
+      - name: Regenerar graficas, dashboard y panel
+        if: steps.gate.outputs.run == 'yes'
+        env: *creds
+        run: |
+          python -m rutina panel
+          python -m rutina gifs
+
+      - name: Publicar histórico y dashboard
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          git config user.name  "rutina-bot"
+          git config user.email "actions@github.com"
+          git add data/ docs/
+          if git diff --staged --quiet; then
+            echo "Sin cambios que guardar"
+          else
+            git commit -m "sync: $(TZ=Europe/Madrid date +'%Y-%m-%d %H:%M')"
+            git push
+          fi

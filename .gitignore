@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+config.toml
+service_account.json
+*.sqlite
+.env
+data/raw/gifs_*.json
+data/dashboard.html
+data/dashboard.json
+.pages-slug
+
+# app Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+# Ficheros de paso: el móvil y el PC los generan y se consumen al importarlos.
+# Lo que perdura son los data/raw/*.jsonl
+data/raw/health_export.json
+data/raw/fitdays_export.csv
+data/raw/hevy_export.csv
+node_modules/
+
+# Datos personales: este repositorio es solo el código.
+data/raw/
+data/state/
+data/inbox/
+docs/

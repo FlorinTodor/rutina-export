@@ -1,0 +1,5 @@
+requests>=2.32
+python-dateutil>=2.9
+# El export de FitDays dice .csv pero es un Excel antiguo OLE2.
+# Solo hace falta en el PC (scripts/), no en el workflow.
+xlrd>=2.0

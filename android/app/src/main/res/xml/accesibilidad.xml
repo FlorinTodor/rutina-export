@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo se declara FitDays en packageNames: el servicio no ve ninguna otra
+     app. Sin esa linea tendria acceso a todo lo que aparezca en pantalla. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accesibilidad_desc"
+    android:notificationTimeout="100"
+    android:packageNames="cn.fitdays.fitdays" />

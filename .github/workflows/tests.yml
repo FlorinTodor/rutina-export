@@ -1,0 +1,82 @@
+name: Tests
+
+# Se ejecutan en cada push porque el pipeline se publica solo cada noche: si
+# algo se rompe, hay que enterarse al subirlo, no a las 21:00 cuando el
+# workflow de sincronizacion escriba en Notion y en Pages.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: El historico sobrevive a una ventana corta
+        run: python tests/test_history.py
+
+      - name: La sincronizacion es idempotente
+        run: python tests/test_sync_offline.py
+
+      - name: El guardia de borrado del movil aguanta
+        # El unico test que no necesita ni red ni movil: valida rutas. Es el
+        # mas importante que no se rompa, porque lo que hay al otro lado es
+        # el telefono personal.
+        run: python tests/test_movil.py
+
+      - name: Todo el codigo compila
+        run: |
+          python -m compileall -q src scripts tests
+          PYTHONPATH=src python -c "
+          import rutina.cli, rutina.history, rutina.dashboard
+          import rutina.sources.health_app, rutina.sources.fitdays_export
+          import sys; sys.path.insert(0, 'scripts')
+          import movil, pull_movil, health_pull, fitdays_pull
+          print('todos los modulos importan')
+          "
+
+  dashboard:
+    name: Dashboard en un DOM real
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install jsdom
+      - run: node tests/test_dashboard.mjs
+
+  android:
+    name: App Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Compilar el APK
+        # Cazaria justo el tipo de fallo que ya aparecio una vez: una
+        # constante de Health Connect que no se llamaba como parecia
+        # (ACTIVE_CALORIES_TOTAL, no ENERGY_TOTAL).
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Guardar el APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rutina-health-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

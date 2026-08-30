@@ -1,0 +1,1374 @@
+<title>Sala de Máquinas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#f4f5f7; --surface:#ffffff; --surface-2:#eceef2; --line:#d8dbe2;
+  --ink:#151920; --ink-2:#4e5666; --ink-3:#828b9c;
+  --steel:#2a78d6; --steel-soft:#dce9fa;
+  --brass:#a8730a; --up:#137a55; --down:#c33f38;
+  --grid:#e3e6ec;
+  --shadow:0 1px 2px rgba(20,24,32,.06),0 8px 24px rgba(20,24,32,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101318; --surface:#171b22; --surface-2:#1e232b; --line:#2b323d;
+    --ink:#e9ecf2; --ink-2:#a3adbe; --ink-3:#717c8f;
+    --steel:#5598e7; --steel-soft:#1b2c44;
+    --brass:#e0a32e; --up:#3ec08d; --down:#e66767;
+    --grid:#252b34;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101318; --surface:#171b22; --surface-2:#1e232b; --line:#2b323d;
+  --ink:#e9ecf2; --ink-2:#a3adbe; --ink-3:#717c8f;
+  --steel:#5598e7; --steel-soft:#1b2c44;
+  --brass:#e0a32e; --up:#3ec08d; --down:#e66767;
+  --grid:#252b34;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--ground);color:var(--ink);
+  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1320px;margin:0 auto;padding:22px 20px 56px}
+
+/* ---------- cabecera ---------- */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px 30px;margin-bottom:20px}
+h1{
+  font-family:Archivo,ui-sans-serif,sans-serif;font-weight:800;
+  font-size:clamp(23px,3.2vw,33px);letter-spacing:-.024em;margin:0;
+  text-wrap:balance;
+}
+.sub{color:var(--ink-3);font-size:12.5px;margin-top:3px}
+.totals{display:flex;gap:26px;margin-left:auto;flex-wrap:wrap}
+.tot .k{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:600;
+  font-size:20px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  display:block;line-height:1.15;
+}
+.tot .l{
+  font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);
+}
+
+/* ---------- rejilla ---------- */
+/* El display de una clase gana al display:none que el navegador le da a
+   [hidden], asi que #sec-fuerza (class="grid") seguia viendose en todas las
+   pestanas. Hace falta el !important para que hidden mande siempre. */
+[hidden]{display:none!important}
+/* Las animaciones de Hevy son MP4, no GIF: mismo hueco y mismo recorte */
+video.thumb,video.dgif{object-fit:cover;background:var(--bg-2)}
+.reflbl{fill:var(--ink-3);font-size:11px;font-family:inherit}
+.grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+.tab{
+  font:inherit;font-size:13px;font-weight:500;padding:9px 15px;cursor:pointer;
+  background:transparent;border:0;border-bottom:2px solid transparent;
+  color:var(--ink-3);margin-bottom:-1px;
+}
+.tab:hover{color:var(--ink-2)}
+.tab[aria-selected="true"]{color:var(--steel);border-bottom-color:var(--steel)}
+
+.cards{display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  box-shadow:var(--shadow);padding:18px 20px}
+.card h3{font-family:Archivo,sans-serif;font-weight:700;font-size:16px;margin:0 0 2px;
+  letter-spacing:-.015em}
+.card .note{font-size:11.5px;color:var(--ink-3);margin:0 0 14px}
+.legend{display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--ink-2);flex-wrap:wrap}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px;
+  vertical-align:-1px}
+.hm{display:block;width:100%;height:auto}
+.blank{color:var(--ink-3);font-size:12.5px;padding:24px 0;text-align:center}
+.tiles.wide{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
+.tile .v em{font-style:normal;font-size:11px;color:var(--ink-3);margin-left:3px}
+.chg{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  display:block;margin-top:2px}
+.minigrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.cmp{width:100%;border-collapse:collapse;font-size:13px}
+.cmp th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink-3);padding:5px 8px;border-bottom:1px solid var(--line);font-weight:600}
+.cmp th:first-child{text-align:left}
+.cmp td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;
+  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.cmp td:first-child{text-align:left;font-family:"IBM Plex Sans",sans-serif;color:var(--ink-2)}
+.cmp tr:last-child td{border-bottom:0}
+.bal{display:flex;flex-direction:column;gap:7px}
+.bal .fila{display:grid;grid-template-columns:96px 1fr 62px;gap:10px;align-items:center;
+  font-size:12px}
+.bal .nom{color:var(--ink-2);text-transform:capitalize;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.bal .barra{position:relative;height:16px;background:var(--surface-2);border-radius:4px}
+.bal .barra i{position:absolute;top:0;bottom:0;left:0;border-radius:4px;display:block}
+.bal .barra u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-3);
+  opacity:.55}
+.bal .val{text-align:right;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  font-weight:600;font-variant-numeric:tabular-nums}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.pill{font-size:11px;padding:3px 9px;border-radius:999px;background:var(--surface-2);
+  color:var(--ink-2)}
+.pill b{color:var(--ink);font-family:"IBM Plex Mono",monospace}
+.aviso{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:8px;
+  background:var(--surface-2);font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+.aviso b{color:var(--ink)}
+.aviso .ic{font-size:15px;line-height:1.2}
+.mini h4{font-family:Archivo,sans-serif;font-size:12.5px;font-weight:600;margin:0 0 4px;
+  color:var(--ink-2)}
+
+/* ---------- raíl ---------- */
+.rail{overflow:hidden;display:flex;flex-direction:column;max-height:78vh}
+.railtop{padding:12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:9px}
+input[type=search],select{
+  width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;
+}
+input[type=search]::placeholder{color:var(--ink-3)}
+:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{
+  font-size:11px;padding:3px 9px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line);background:transparent;color:var(--ink-2);
+  font-family:inherit;
+}
+.chip[aria-pressed="true"]{background:var(--steel);border-color:var(--steel);color:#fff}
+.list{overflow-y:auto;flex:1}
+.row{
+  display:grid;grid-template-columns:34px minmax(0,1fr) 62px 46px;gap:9px;
+  align-items:center;padding:8px 12px;cursor:pointer;border:0;width:100%;
+  background:transparent;text-align:left;font:inherit;color:inherit;
+  border-bottom:1px solid var(--line);
+}
+.row:hover{background:var(--surface-2)}
+.row[aria-current="true"]{background:var(--steel-soft)}
+.row[aria-current="true"] .rname{color:var(--steel)}
+.thumb{
+  width:34px;height:34px;border-radius:6px;object-fit:cover;
+  background:var(--surface-2);border:1px solid var(--line);
+}
+.thumb.ph{display:grid;place-items:center;font-size:14px;color:var(--ink-3)}
+.rname{font-size:12.5px;font-weight:500;line-height:1.25;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.rmeta{font-size:10.5px;color:var(--ink-3);text-transform:capitalize}
+.delta{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  text-align:right;font-variant-numeric:tabular-nums;
+}
+.up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--ink-3)}
+
+/* ---------- detalle ---------- */
+.detail{padding:18px 20px 20px}
+.dhead{display:flex;gap:15px;align-items:center;margin-bottom:16px}
+.dgif{
+  width:78px;height:78px;border-radius:9px;object-fit:cover;flex:none;
+  background:var(--surface-2);border:1px solid var(--line);
+}
+h2{font-family:Archivo,sans-serif;font-weight:700;font-size:21px;margin:0;
+  letter-spacing:-.018em;text-wrap:balance}
+.tags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.tag{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+  padding:2px 8px;border-radius:5px;background:var(--surface-2);color:var(--ink-2);
+}
+.tag.pr{background:var(--brass);color:#1a1300;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px;margin-bottom:18px}
+.tile{background:var(--surface-2);border-radius:8px;padding:10px 12px}
+.tile .v{
+  font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:17px;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;display:block;
+}
+.tile .l{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3)}
+.tile.hl .v{color:var(--brass)}
+
+figure{margin:0}
+.chartbox{position:relative}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{
+  position:absolute;pointer-events:none;opacity:0;transition:opacity .12s;
+  background:var(--surface);border:1px solid var(--line);border-radius:7px;
+  padding:7px 10px;font-size:11.5px;box-shadow:var(--shadow);white-space:nowrap;z-index:4;
+}
+.tip b{font-family:"IBM Plex Mono",monospace;font-size:13px;display:block}
+.tip .m{color:var(--ink-3);font-size:10.5px}
+figcaption{font-size:11px;color:var(--ink-3);margin-top:8px}
+
+.tblwrap{overflow-x:auto;margin-top:18px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{
+  text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink-3);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--line);
+}
+td{padding:6px 10px;border-bottom:1px solid var(--line);
+  font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",monospace;font-size:12px}
+td:first-child{font-family:"IBM Plex Sans",sans-serif}
+tr:last-child td{border-bottom:0}
+.isPr{color:var(--brass);font-weight:600}
+.empty{color:var(--ink-3);padding:30px 0;text-align:center}
+/* ---------- visor ampliado ---------- */
+.mini,.card.zoomable{position:relative}
+.zoom{
+  position:absolute;top:10px;right:10px;z-index:2;
+  width:26px;height:26px;border-radius:6px;cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-3);
+  font:inherit;font-size:13px;line-height:1;display:grid;place-items:center;
+  opacity:0;transition:opacity .14s;
+}
+.mini:hover .zoom,.card.zoomable:hover .zoom,.zoom:focus-visible{opacity:1}
+.zoom:hover{color:var(--steel);border-color:var(--steel)}
+.mini{cursor:zoom-in}
+
+dialog.viewer{
+  border:0;padding:0;background:transparent;max-width:min(1180px,94vw);width:100%;
+}
+dialog.viewer::backdrop{background:rgba(8,10,14,.72);backdrop-filter:blur(2px)}
+.viewer .panel{padding:22px 24px 24px}
+.vhead{display:flex;align-items:flex-start;gap:16px;margin-bottom:4px}
+.vhead h3{font-family:Archivo,sans-serif;font-size:19px;font-weight:700;margin:0;
+  letter-spacing:-.018em}
+.vclose{
+  margin-left:auto;border:1px solid var(--line);background:var(--surface-2);
+  color:var(--ink-2);border-radius:7px;width:30px;height:30px;cursor:pointer;
+  font:inherit;font-size:15px;line-height:1;
+}
+.vclose:hover{color:var(--ink);border-color:var(--ink-3)}
+.vstats{display:flex;gap:22px;flex-wrap:wrap;margin:10px 0 16px}
+.vstats div{font-size:11px;color:var(--ink-3);text-transform:uppercase;
+  letter-spacing:.07em}
+.vstats b{display:block;font-family:"IBM Plex Mono",monospace;font-size:17px;
+  font-weight:600;color:var(--ink);letter-spacing:-.02em;text-transform:none}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Sala de Máquinas</h1>
+      <div class="sub" id="range"></div>
+    </div>
+    <div class="totals" id="totals"></div>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist">
+    <button class="tab" data-t="resumen"  role="tab" aria-selected="true">Resumen</button>
+    <button class="tab" data-t="fuerza"   role="tab" aria-selected="false">Fuerza</button>
+    <button class="tab" data-t="actividad" role="tab" aria-selected="false">Actividad</button>
+    <button class="tab" data-t="cuerpo"   role="tab" aria-selected="false">Cuerpo</button>
+  </nav>
+
+  <dialog class="viewer" id="viewer">
+    <div class="panel">
+      <div class="vhead">
+        <div><h3 id="v-title"></h3><p class="note" id="v-note"></p></div>
+        <button class="vclose" id="v-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="vstats" id="v-stats"></div>
+      <div id="v-body"></div>
+    </div>
+  </dialog>
+
+  <section id="sec-resumen"></section>
+  <section id="sec-actividad" hidden></section>
+  <section id="sec-cuerpo" hidden></section>
+
+  <div class="grid" id="sec-fuerza" hidden>
+    <aside class="panel rail">
+      <div class="railtop">
+        <input type="search" id="q" placeholder="Buscar ejercicio…" aria-label="Buscar ejercicio">
+        <select id="sort" aria-label="Ordenar por">
+          <option value="recent">Más reciente primero</option>
+          <option value="volume">Más volumen</option>
+          <option value="trend">Mejor progresión</option>
+          <option value="stalled">Más estancado</option>
+          <option value="name">Alfabético</option>
+        </select>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="list" id="list" role="listbox" aria-label="Ejercicios"></div>
+    </aside>
+
+    <section class="panel detail" id="detail"></section>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/;
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString("es-ES");
+const MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const short = iso => { const d = new Date(iso+"T00:00"); return d.getDate()+" "+MES[d.getMonth()]; };
+const longd = iso => { const d = new Date(iso+"T00:00"); return d.getDate()+" "+MES[d.getMonth()]+" "+d.getFullYear(); };
+const daysAgo = iso => Math.round((Date.now()-new Date(iso+"T00:00"))/864e5);
+
+let state = { sel: null, q: "", sort: "recent", muscle: null };
+
+/* ---------- cabecera ---------- */
+const T = DATA.totals;
+$("#range").textContent = `${longd(T.from)} — ${longd(T.to)}`;
+$("#totals").innerHTML = [
+  [fmt(T.sessions), "sesiones"],
+  [(T.volume/1000).toFixed(0)+" t", "movidas"],
+  [T.exercises, "ejercicios"],
+].map(([k,l]) => `<div class="tot"><span class="k">${k}</span><span class="l">${l}</span></div>`).join("");
+
+/* ---------- filtros por músculo ---------- */
+const muscles = [...new Set(DATA.exercises.map(e => e.muscle))].sort();
+$("#chips").innerHTML = muscles.map(m =>
+  `<button class="chip" data-m="${m}" aria-pressed="false">${m}</button>`).join("");
+$("#chips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  state.muscle = state.muscle === b.dataset.m ? null : b.dataset.m;
+  document.querySelectorAll(".chip").forEach(c =>
+    c.setAttribute("aria-pressed", String(c.dataset.m === state.muscle)));
+  render();
+});
+$("#q").addEventListener("input", e => { state.q = e.target.value.toLowerCase(); render(); });
+$("#sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+
+/* ---------- sparkline ---------- */
+function spark(pts, w = 62, h = 20) {
+  const ys = pts.map(p => p.e).filter(Boolean);
+  if (ys.length < 2) return `<svg width="${w}" height="${h}" aria-hidden="true"></svg>`;
+  const lo = Math.min(...ys), hi = Math.max(...ys), sp = hi - lo || 1;
+  const d = ys.map((y,i) =>
+    `${(i/(ys.length-1))*w},${h-2-((y-lo)/sp)*(h-4)}`).join(" L");
+  const last = ys[ys.length-1];
+  return `<svg width="${w}" height="${h}" aria-hidden="true">
+    <polyline points="${d.replaceAll(" L"," ")}" fill="none" stroke="var(--steel)"
+      stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${w}" cy="${h-2-((last-lo)/sp)*(h-4)}" r="2.2" fill="var(--steel)"/>
+  </svg>`;
+}
+
+/* ---------- lista ---------- */
+function visible() {
+  let out = DATA.exercises.filter(e => {
+    if (state.muscle && e.muscle !== state.muscle) return false;
+    if (!state.q) return true;
+    return (e.name + " " + e.aliases.join(" ") + " " + e.muscle).toLowerCase().includes(state.q);
+  });
+  const by = {
+    recent: (a,b) => b.last.localeCompare(a.last),
+    volume: (a,b) => b.vol - a.vol,
+    trend:  (a,b) => b.trend - a.trend,
+    stalled:(a,b) => a.trend - b.trend,
+    name:   (a,b) => a.name.localeCompare(b.name,"es"),
+  }[state.sort];
+  return out.sort(by);
+}
+
+function render() {
+  const items = visible();
+  if (!items.length) { $("#list").innerHTML = `<p class="empty">Nada coincide.</p>`; return; }
+  if (!state.sel || !items.some(e => e.name === state.sel)) state.sel = items[0].name;
+
+  $("#list").innerHTML = items.map(e => {
+    const t = e.trend, cls = t > 1 ? "up" : t < -1 ? "down" : "flat";
+    const sign = t > 0 ? "+" : "";
+    return `<button class="row" role="option" data-n="${encodeURIComponent(e.name)}"
+        aria-current="${e.name === state.sel}">
+      ${e.anim ? `<video class="thumb" src="${e.anim}" autoplay loop muted
+          playsinline preload="metadata" aria-hidden="true"></video>`
+        : e.gif ? `<img class="thumb" src="${e.gif}" alt="" loading="lazy">`
+              : `<span class="thumb ph">—</span>`}
+      <span>
+        <span class="rname">${e.name}</span>
+        <span class="rmeta">${e.muscle} · ${e.sessions} ses · hace ${daysAgo(e.last)} d</span>
+      </span>
+      ${spark(e.pts)}
+      <span class="delta ${cls}">${sign}${t}</span>
+    </button>`;
+  }).join("");
+
+  $("#list").querySelectorAll(".row").forEach(r => r.onclick = () => {
+    state.sel = decodeURIComponent(r.dataset.n); render();
+  });
+  detail(items.find(e => e.name === state.sel));
+}
+
+/* ---------- gráfica grande ---------- */
+let EXAXIS = null;   // ejes de la última gráfica de ejercicio, para el hover
+
+function chart(e) {
+  const pts = e.pts.filter(p => p.e);
+  if (pts.length < 2) return `<p class="empty">Solo una sesión registrada: aún no hay curva.</p>`;
+  const W = 900, H = 300, P = { t: 16, r: 18, b: 30, l: 46 };
+  const xs = pts.map(p => new Date(p.d + "T00:00").getTime());
+  const ys = pts.map(p => p.e);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  const pad = (hi - lo || hi * .1) * .18; lo -= pad; hi += pad;
+  const X = v => P.l + ((v - x0) / (x1 - x0 || 1)) * (W - P.l - P.r);
+  const Y = v => P.t + (1 - (v - lo) / (hi - lo || 1)) * (H - P.t - P.b);
+
+  const line = pts.map((p,i) => `${i?"L":"M"}${X(xs[i]).toFixed(1)},${Y(p.e).toFixed(1)}`).join("");
+  const area = `${line}L${X(xs[xs.length-1]).toFixed(1)},${H-P.b}L${X(x0).toFixed(1)},${H-P.b}Z`;
+
+  const ticks = 4, gy = [];
+  for (let i = 0; i <= ticks; i++) {
+    const v = lo + (hi - lo) * i / ticks;
+    gy.push(`<line x1="${P.l}" x2="${W-P.r}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"
+      stroke="var(--grid)" stroke-width="1"/>
+      <text x="${P.l-9}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="11"
+        fill="var(--ink-3)" font-family="IBM Plex Mono,monospace">${v.toFixed(0)}</text>`);
+  }
+  const nx = Math.min(6, pts.length), gx = [];
+  for (let i = 0; i < nx; i++) {
+    const p = pts[Math.round(i * (pts.length - 1) / (nx - 1 || 1))];
+    gx.push(`<text x="${X(new Date(p.d+"T00:00").getTime()).toFixed(1)}" y="${H-8}"
+      text-anchor="middle" font-size="11" fill="var(--ink-3)">${short(p.d)}</text>`);
+  }
+  EXAXIS = { pts, X: i => X(xs[i]), Y: i => Y(pts[i].e) };
+  const prI = ys.indexOf(Math.max(...ys));
+  const dots = pts.map((p,i) => `<circle class="pt" data-i="${i}"
+     cx="${X(xs[i]).toFixed(1)}" cy="${Y(p.e).toFixed(1)}"
+     r="${i===prI?4.5:3}" fill="${i===prI?"var(--brass)":"var(--steel)"}"
+     stroke="var(--surface)" stroke-width="2"/>`).join("");
+
+  return `<figure><div class="chartbox">
+    <svg viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="Progresión de 1RM estimado en ${e.name}">
+      <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="var(--steel)" stop-opacity=".22"/>
+        <stop offset="100%" stop-color="var(--steel)" stop-opacity="0"/>
+      </linearGradient></defs>
+      ${gy.join("")}
+      <path d="${area}" fill="url(#g)"/>
+      <path d="${line}" fill="none" stroke="var(--steel)" stroke-width="2"
+        stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}${gx.join("")}
+      <line class="cross" y1="${P.t}" y2="${H-P.b}" stroke="var(--ink-3)"
+        stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+      <rect class="hit" x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${H-P.t-P.b}"
+        fill="transparent"/>
+    </svg>
+    <div class="tip"></div>
+  </div>
+  <figcaption>1RM estimado por sesión (Epley). El punto en latón es tu récord.</figcaption></figure>`;
+}
+
+function wireChartIn(raiz) {
+  const box = raiz.querySelector(".chartbox");
+  if (!box || !EXAXIS) return;
+  const { pts, X, Y } = EXAXIS;
+  hover(box, pts, X, Y, i => {
+    const p = pts[i];
+    return `<b>${p.e} kg</b><span class="m">${longd(p.d)} · mejor serie
+      ${p.w}kg × ${p.r} · ${p.s} series · ${fmt(p.v)} kg de volumen</span>`;
+  });
+}
+
+function wireChart() {
+  // ojo: hay que acotar a #detail. Con varias secciones en la página,
+  // buscar ".chartbox" a secas agarraba la gráfica de otra pestaña.
+  const box = $("#detail .chartbox");
+  if (!box || !EXAXIS) return;
+  const { pts, X, Y } = EXAXIS;
+  hover(box, pts, X, Y, i => {
+    const p = pts[i];
+    return `<b>${p.e} kg</b><span class="m">${longd(p.d)} · mejor serie
+      ${p.w}kg × ${p.r} · ${p.s} series · ${fmt(p.v)} kg de volumen</span>`;
+  });
+}
+
+/* ---------- panel de detalle ---------- */
+function detail(e) {
+  if (!e) return;
+  const t = e.trend, cls = t > 1 ? "up" : t < -1 ? "down" : "flat";
+  const rows = [...e.pts].reverse().slice(0, 14);
+  const prE = e.prE;
+  $("#detail").innerHTML = `
+    <div class="dhead">
+      ${e.anim ? `<video class="dgif" src="${e.anim}" autoplay loop muted
+          playsinline aria-label="Demostración de ${e.name}"></video>`
+        : e.gif ? `<img class="dgif" src="${e.gif}" alt="Demostración de ${e.name}">`
+              : `<span class="dgif"></span>`}
+      <div>
+        <h2>${e.name}</h2>
+        <div class="tags">
+          <span class="tag">${e.muscle}</span>
+          ${e.equip ? `<span class="tag">${e.equip}</span>` : ""}
+          ${e.prDate && daysAgo(e.prDate) < 30 ? `<span class="tag pr">PR reciente</span>` : ""}
+        </div>
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="tile hl"><span class="v">${e.prE ?? "—"} kg</span><span class="l">Récord 1RM est.</span></div>
+      <div class="tile"><span class="v">${e.prW ?? "—"}×${e.prR ?? "—"}</span><span class="l">Mejor serie</span></div>
+      <div class="tile"><span class="v ${cls}">${t > 0 ? "+" : ""}${t} kg</span><span class="l">Tendencia</span></div>
+      <div class="tile"><span class="v">${e.sessions}</span><span class="l">Sesiones</span></div>
+      <div class="tile"><span class="v">${(e.vol/1000).toFixed(1)} t</span><span class="l">Volumen total</span></div>
+      <div class="tile"><span class="v">${daysAgo(e.last)} d</span><span class="l">Desde la última</span></div>
+    </div>
+    ${chart(e)}
+    <div class="tblwrap"><table>
+      <thead><tr><th>Fecha</th><th>1RM est.</th><th>Mejor serie</th><th>Series</th><th>Volumen</th></tr></thead>
+      <tbody>${rows.map(p => `<tr>
+        <td>${longd(p.d)}</td>
+        <td class="${p.e === prE ? "isPr" : ""}">${p.e || "—"}</td>
+        <td>${p.w}×${p.r}</td><td>${p.s}</td><td>${fmt(p.v)}</td></tr>`).join("")}
+      </tbody></table></div>
+    ${e.aliases.length ? `<p class="sub" style="margin-top:12px">También registrado como:
+      ${e.aliases.join(" · ")}</p>` : ""}`;
+  wireChart();
+  const cb = $("#detail .chartbox");
+  if (cb) {
+    cb.parentElement.classList.add("zoomable");
+    ampliable(cb.parentElement, {
+      titulo: e.name, nota: "1RM estimado por sesión (Epley)",
+      stats: resumen(e.pts.filter(p => p.e), "e", 1, "kg"),
+      dibuja: c => { c.innerHTML = chart(e); wireChartIn(c); },
+    });
+  }
+}
+
+
+/* ================= gráficas compartidas (SVG + hover) ================= */
+
+const PAL = { steel:"var(--steel)", brass:"var(--brass)", up:"var(--up)", down:"var(--down)" };
+
+function axes(W, H, P, lo, hi, ticks = 4) {
+  let g = "";
+  for (let i = 0; i <= ticks; i++) {
+    const v = lo + (hi - lo) * i / ticks;
+    const y = P.t + (1 - (v - lo) / (hi - lo || 1)) * (H - P.t - P.b);
+    g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"
+      stroke="var(--grid)" stroke-width="1"/>
+      <text x="${P.l - 9}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11"
+        fill="var(--ink-3)" font-family="IBM Plex Mono,monospace">${fmtn(v)}</text>`;
+  }
+  return g;
+}
+const fmtn = v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(1).replace(".0", "") + "k"
+                : Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1);
+
+function xLabels(pts, X, H, n = 6) {
+  let g = "";
+  const step = Math.max(1, Math.round((pts.length - 1) / (n - 1)));
+  for (let i = 0; i < pts.length; i += step) {
+    g += `<text x="${X(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10.5"
+      fill="var(--ink-3)">${short(pts[i].d)}</text>`;
+  }
+  return g;
+}
+
+/* línea con media móvil opcional */
+function lineChart(box, pts, key, opts = {}) {
+  const has = pts.filter(p => p[key] != null);
+  if (has.length < 2) { box.innerHTML = `<p class="blank">Aún no hay datos suficientes.</p>`; return; }
+  const W = 900, H = opts.h || 240, P = { t: 14, r: 16, b: 28, l: 46 };
+  const ys = has.map(p => p[key]);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  const pad = (hi - lo || hi * .1) * .16;
+  lo = opts.zero ? 0 : lo - pad; hi += pad;
+  // una referencia fuera del rango no se veria: se estira el eje para meterla
+  if (opts.ref != null) { lo = Math.min(lo, opts.ref); hi = Math.max(hi, opts.ref); }
+  const X = i => P.l + (i / (has.length - 1 || 1)) * (W - P.l - P.r);
+  const Y = v => P.t + (1 - (v - lo) / (hi - lo || 1)) * (H - P.t - P.b);
+  const color = opts.color || PAL.steel;
+
+  const raw = has.map((p, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(p[key]).toFixed(1)}`).join("");
+  let avg = "";
+  const win = opts.avg || 0;
+  if (win && has.length >= win + 2) {
+    const m = has.map((_, i) => {
+      const w = has.slice(Math.max(0, i - win + 1), i + 1).map(p => p[key]);
+      return w.reduce((a, b) => a + b, 0) / w.length;
+    });
+    avg = m.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+  }
+
+  box.innerHTML = `<div class="chartbox">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.label || key}">
+      <defs><linearGradient id="gr${key}" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="${avg ? .10 : .20}"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+      ${axes(W, H, P, lo, hi)}
+      <path d="${raw}L${X(has.length - 1).toFixed(1)},${H - P.b}L${P.l},${H - P.b}Z"
+        fill="url(#gr${key})"/>
+      <path d="${raw}" fill="none" stroke="${color}" stroke-width="${avg ? 1 : 2}"
+        stroke-opacity="${avg ? .38 : 1}" stroke-linejoin="round"/>
+      ${avg ? `<path d="${avg}" fill="none" stroke="${color}" stroke-width="2.4"
+        stroke-linejoin="round" stroke-linecap="round"/>` : ""}
+      ${opts.ref != null ? `<line x1="${P.l}" x2="${W - P.r}"
+        y1="${Y(opts.ref).toFixed(1)}" y2="${Y(opts.ref).toFixed(1)}"
+        stroke="var(--ink-3)" stroke-width="1.2" stroke-dasharray="5 4"/>
+        <text x="${W - P.r}" y="${(Y(opts.ref) - 6).toFixed(1)}" text-anchor="end"
+        class="reflbl">${opts.refLabel || ""}</text>` : ""}
+      ${xLabels(has, X, H)}
+      <line class="cross" y1="${P.t}" y2="${H - P.b}" stroke="var(--ink-3)"
+        stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+      <rect class="hit" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}"
+        height="${H - P.t - P.b}" fill="transparent"/>
+    </svg><div class="tip"></div></div>
+    ${avg ? `<div class="legend"><span><i style="background:${color};opacity:.4"></i>diario</span>
+      <span><i style="background:${color}"></i>media ${win} días</span></div>` : ""}`;
+
+  hover(box, has, i => X(i), i => Y(has[i][key]), i =>
+    `<b>${opts.unit ? has[i][key] + " " + opts.unit : has[i][key]}</b>
+     <span class="m">${longd(has[i].d)}</span>`);
+}
+
+/* barras apiladas: usado para las fases del sueño */
+function stackChart(box, pts, keys, colors, names, opts = {}) {
+  const has = pts.filter(p => keys.some(k => p[k] != null));
+  if (!has.length) { box.innerHTML = `<p class="blank">Aún no hay datos.</p>`; return; }
+  const W = 900, H = opts.h || 240, P = { t: 14, r: 16, b: 28, l: 46 };
+  const tot = has.map(p => keys.reduce((a, k) => a + (p[k] || 0), 0));
+  const hi = Math.max(...tot) * 1.12;
+  const bw = Math.min(26, (W - P.l - P.r) / has.length * .74);
+  const X = i => P.l + (i + .5) / has.length * (W - P.l - P.r);
+  const Y = v => P.t + (1 - v / hi) * (H - P.t - P.b);
+
+  let bars = "";
+  has.forEach((p, i) => {
+    let acc = 0;
+    keys.forEach((k, j) => {
+      const v = p[k] || 0;
+      if (!v) return;
+      const y0 = Y(acc + v), y1 = Y(acc);
+      // 2px de hueco entre segmentos, para que se lean como piezas
+      bars += `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${y0.toFixed(1)}"
+        width="${bw.toFixed(1)}" height="${Math.max(0, y1 - y0 - 2).toFixed(1)}"
+        fill="${colors[j]}" rx="2"/>`;
+      acc += v;
+    });
+  });
+
+  box.innerHTML = `<div class="chartbox">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.label || ""}">
+      ${axes(W, H, P, 0, hi)}${bars}${xLabels(has, X, H)}
+      <rect class="hit" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}"
+        height="${H - P.t - P.b}" fill="transparent"/>
+    </svg><div class="tip"></div></div>
+    <div class="legend">${names.map((n, j) =>
+      `<span><i style="background:${colors[j]}"></i>${n}</span>`).join("")}</div>`;
+
+  hover(box, has, i => X(i), i => Y(tot[i]), i =>
+    `<b>${tot[i].toFixed(1)} h</b><span class="m">${longd(has[i].d)} · ` +
+    keys.map((k, j) => `${names[j]} ${(has[i][k] || 0).toFixed(1)}`).join(" · ") + `</span>`);
+}
+
+/* capa de hover común a todas las gráficas */
+function hover(box, pts, X, Y, html) {
+  const svg = box.querySelector("svg"), tip = box.querySelector(".tip");
+  const cross = box.querySelector(".cross"), hit = box.querySelector(".hit");
+  if (!hit) return;
+  // Unas llamadas pasan el contenedor de fuera (lineChart) y otras el propio
+  // .chartbox (las de ejercicios). Sin el "|| box", en las segundas cb era
+  // null y getBoundingClientRect reventaba en CADA movimiento del raton: las
+  // graficas de ejercicio se quedaban sin tooltip y sin cruz, mudas.
+  const cb = box.querySelector(".chartbox") || box;
+  const at = ev => {
+    const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+    const mx = ((ev.clientX - r.left) / r.width) * vb.width;
+    let best = 0, bd = Infinity;
+    pts.forEach((_, i) => { const d = Math.abs(X(i) - mx); if (d < bd) { bd = d; best = i; } });
+    const bb = cb.getBoundingClientRect();
+    const px = (X(best) / vb.width) * r.width + (r.left - bb.left);
+    const py = (Y(best) / vb.height) * r.height + (r.top - bb.top);
+    if (cross) { cross.setAttribute("x1", X(best)); cross.setAttribute("x2", X(best));
+                 cross.setAttribute("opacity", "1"); }
+    tip.innerHTML = html(best);
+    tip.style.opacity = "1";
+    const w = tip.offsetWidth;
+    tip.style.left = Math.max(4, Math.min(px - w / 2, bb.width - w - 4)) + "px";
+    tip.style.top = Math.max(2, py - tip.offsetHeight - 12) + "px";
+  };
+  hit.addEventListener("mousemove", at);
+  hit.addEventListener("mouseleave", () => {
+    tip.style.opacity = "0"; if (cross) cross.setAttribute("opacity", "0");
+  });
+  svg.addEventListener("touchstart", e => at(e.touches[0]), { passive: true });
+}
+
+/* mapa de constancia, estilo calendario */
+function heatmap(box, daily) {
+  const vol = {}; daily.forEach(d => { if (d.v) vol[d.d] = d.v; });
+  const days = Object.keys(vol);
+  if (!days.length) { box.innerHTML = `<p class="blank">Sin entrenos.</p>`; return; }
+  const end = new Date(days[days.length - 1] + "T00:00");
+  end.setDate(end.getDate() + (6 - ((end.getDay() + 6) % 7)));
+  // Arranca en la semana del PRIMER entreno, no 44 semanas fijas hacia atrás.
+  // Con el corte por cambio de gimnasio solo hay 5 semanas con datos, y el
+  // mapa salía como un tablero de 10 meses casi entero vacío.
+  let start = new Date(days[0] + "T00:00");
+  const tope = new Date(end); tope.setDate(tope.getDate() - 7 * 44 + 1);
+  if (start < tope) start = tope;                    // ni más de 44 semanas
+  const minimo = new Date(end); minimo.setDate(minimo.getDate() - 7 * 12 + 1);
+  if (start > minimo) start = minimo;                // ni menos de 12, o queda enano
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const peak = Math.max(...Object.values(vol));
+  const cols = Math.round((end - start) / 6048e5) + 1;
+  const cw = 13;
+  let cells = "", months = "", seen = new Set();
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < 7; r++) {
+      const dt = new Date(start); dt.setDate(dt.getDate() + c * 7 + r);
+      if (dt > end) continue;
+      const iso = dt.toISOString().slice(0, 10), v = vol[iso] || 0;
+      const op = v ? (.28 + .72 * (v / peak)).toFixed(2) : 0;
+      cells += `<rect class="hmc" x="${c * cw}" y="${r * cw}" width="${cw - 3}"
+        height="${cw - 3}" rx="2.5" data-d="${iso}" data-v="${v}"
+        fill="${v ? "var(--steel)" : "var(--surface-2)"}" fill-opacity="${v ? op : 1}"/>`;
+    }
+    const dt = new Date(start); dt.setDate(dt.getDate() + c * 7);
+    if (!seen.has(dt.getMonth()) && c > 0) {
+      seen.add(dt.getMonth());
+      months += `<text x="${c * cw}" y="${7 * cw + 12}" font-size="10"
+        fill="var(--ink-3)">${MES[dt.getMonth()]}</text>`;
+    }
+  }
+  box.innerHTML = `<div class="chartbox"><svg class="hm"
+    viewBox="0 0 ${cols * cw} ${7 * cw + 18}"
+    role="img" aria-label="Días entrenados">${cells}${months}</svg>
+    <div class="tip"></div></div>
+    <div class="legend"><span>${days.length} días entrenados · el color es el volumen</span></div>`;
+
+  // El <title> de SVG es el tooltip del navegador: tarda un segundo en salir y
+  // no se puede dar estilo, asi que el mapa parecia muerto al pasar por encima.
+  // Mismo tooltip que el resto de graficas.
+  const cb = box.querySelector(".chartbox"), tip = box.querySelector(".tip");
+  cb.querySelectorAll(".hmc").forEach(rect => {
+    rect.addEventListener("mouseenter", () => {
+      const iso = rect.dataset.d, v = +rect.dataset.v;
+      tip.innerHTML = v
+        ? `<b>${fmt(v)} kg</b><span class="m">${longd(iso)}</span>`
+        : `<b>Descanso</b><span class="m">${longd(iso)}</span>`;
+      tip.style.opacity = "1";
+      const rb = rect.getBoundingClientRect(), bb = cb.getBoundingClientRect();
+      const w = tip.offsetWidth;
+      tip.style.left = Math.max(4, Math.min(rb.left - bb.left + rb.width / 2 - w / 2,
+                                            bb.width - w - 4)) + "px";
+      tip.style.top = Math.max(2, rb.top - bb.top - tip.offsetHeight - 8) + "px";
+    });
+  });
+  cb.addEventListener("mouseleave", () => { tip.style.opacity = "0"; });
+}
+
+/* ================= visor ampliado ================= */
+
+const dlg = $("#viewer");
+let redibuja = null;                 // como repintar lo que hay abierto
+
+function abrirVisor({ titulo, nota, stats, dibuja }) {
+  $("#v-title").textContent = titulo;
+  $("#v-note").textContent = nota || "";
+  $("#v-stats").innerHTML = (stats || [])
+    .map(([l, v]) => `<div>${l}<b>${v}</b></div>`).join("");
+  const cuerpo = $("#v-body");
+  cuerpo.innerHTML = "";
+  redibuja = () => dibuja(cuerpo);
+  redibuja();
+  dlg.showModal();
+}
+
+$("#v-close").onclick = () => dlg.close();
+dlg.addEventListener("click", e => {          // clic fuera del panel: cerrar
+  if (e.target === dlg) dlg.close();
+});
+dlg.addEventListener("close", () => { redibuja = null; $("#v-body").innerHTML = ""; });
+// el SVG se dimensiona con el contenedor: al cambiar el tamaño hay que repintar
+let temporizador;
+addEventListener("resize", () => {
+  if (!redibuja) return;
+  clearTimeout(temporizador);
+  temporizador = setTimeout(() => redibuja(), 180);
+});
+
+function resumen(pts, key, dec = 1, unidad = "") {
+  const v = pts.map(p => p[key]).filter(x => x != null);
+  if (!v.length) return [];
+  const u = unidad ? " " + unidad : "";
+  const d = v[v.length - 1] - v[0];
+  return [
+    ["Actual", v[v.length - 1].toFixed(dec) + u],
+    ["Mínimo", Math.min(...v).toFixed(dec) + u],
+    ["Máximo", Math.max(...v).toFixed(dec) + u],
+    ["Media", (v.reduce((a, b) => a + b, 0) / v.length).toFixed(dec) + u],
+    ["Cambio total", (d > 0 ? "+" : "") + d.toFixed(dec) + u],
+    ["Registros", v.length],
+  ];
+}
+
+/** Hace ampliable una tarjeta: añade el botón y engancha el clic. */
+function ampliable(caja, opciones) {
+  if (!caja) return;
+  const b = document.createElement("button");
+  b.className = "zoom";
+  b.type = "button";
+  b.textContent = "⤢";
+  b.setAttribute("aria-label", `Ampliar ${opciones.titulo}`);
+  b.onclick = e => { e.stopPropagation(); abrirVisor(opciones); };
+  caja.appendChild(b);
+  caja.addEventListener("click", e => {
+    if (!e.target.closest(".zoom")) abrirVisor(opciones);
+  });
+}
+
+/* ---------- calorías ----------
+   Health Connect da el total del día (TotalCaloriesBurnedRecord), que YA
+   incluye lo que escribe Hevy: com.hevy aparece como origen de esos totales.
+   Sumar aparte las del entreno lo contaría dos veces, y además la API de Hevy
+   no las da: en sus entrenos no hay ningún campo de energía.
+
+   OJO con los días "solo basal". Samsung escribe a veces un total que es
+   exactamente su estimación de metabolismo basal, sin la parte de actividad,
+   incluso en días con 10.000 pasos: se reconocen porque el número se repite
+   idéntico (2048.0) en decenas de días, mientras que un día real siempre
+   trae decimales. No son "días que quemaste poco", son días SIN dato de
+   actividad, y meterlos en las medias las hunde: con ellos, la diferencia
+   entre entrenar y descansar salía +736 kcal; sin ellos, +426.
+
+   Se descartan de las medias y de la gráfica. Un hueco es más honesto que
+   una línea plana que parece un dato.                                      */
+
+function tarjetaCalorias(d) {
+  // la basal más reciente que haya dado la báscula
+  const basal = [...d].reverse().find(x => x.br != null)?.br ?? null;
+
+  // un día real siempre suma algo por encima de la basal, aunque sean 2.000
+  // pasos; pegarse a ella al 1% es la huella de que falta la actividad
+  const soloBasal = x => basal != null && Math.abs(x.kc - basal) <= basal * 0.01;
+
+  const todos = d.filter(x => x.kc != null);
+  const con = todos.filter(x => !soloBasal(x));
+  const descartados = todos.length - con.length;
+  if (con.length < 2) return "";
+
+  const media = xs => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  const entD = con.filter(x => x.v), desD = con.filter(x => !x.v);
+  const ent = media(entD.map(x => x.kc));
+  const des = media(desD.map(x => x.kc));
+  const ult7 = media(con.slice(-7).map(x => x.kc));
+  const hoy = con[con.length - 1];
+  const sobreBasal = basal != null ? hoy.kc - basal : null;
+
+  // con tres días de descanso la comparación no dice nada; se calla en vez
+  // de dar un número que parece sólido y no lo es
+  const MIN = 5;
+  const comparable = entD.length >= MIN && desD.length >= MIN;
+
+  const t = (v, lbl) => v == null ? "" : `<div class="tile">
+    <span class="v">${Math.round(v).toLocaleString("es-ES")}<em>kcal</em></span>
+    <span class="l">${lbl}</span></div>`;
+
+  return `<div class="card" id="card-kc">
+    <h3>Calorías quemadas</h3>
+    <p class="note">Total del día según Health Connect · el entreno de Hevy ya va
+      incluido, porque Hevy escribe en Health Connect</p>
+    ${basal != null ? `<p class="note">La <b>basal</b> (${Math.round(basal)} kcal, que
+      estima la báscula según tu composición) es lo que gastarías tumbado todo el
+      día sin moverte: respirar, el corazón, la temperatura, los órganos. Todo lo
+      que quede <b>por encima de la línea</b> es lo que has añadido moviéndote.</p>` : ""}
+    ${descartados ? `<p class="note">Quedan fuera <b>${descartados} días</b> en los que
+      Samsung no registró actividad y apuntó solo la basal: no son días de quemar
+      poco, son días sin dato. Por eso la línea tiene huecos.</p>` : ""}
+    <div class="tiles wide">
+      ${t(hoy.kc, longd(hoy.d))}
+      ${t(ult7, "Media 7 días")}
+      ${t(ent, `Entrenando (${entD.length} días)`)}
+      ${t(des, `Descansando (${desD.length} días)`)}
+      ${comparable ? `<div class="tile">
+        <span class="v up">+${Math.round(ent - des)}<em>kcal</em></span>
+        <span class="l">Lo que suma entrenar</span></div>` : ""}
+      ${sobreBasal != null ? `<div class="tile">
+        <span class="v">${sobreBasal > 0 ? "+" : ""}${Math.round(sobreBasal)}<em>kcal</em></span>
+        <span class="l">Sobre tu basal${hoy.d === new Date().toISOString().slice(0, 10)
+          ? " (día en curso)" : ""}</span></div>` : ""}
+    </div>
+    ${!comparable && desD.length ? `<p class="note">Con ${desD.length} días de descanso
+      con dato completo no se puede comparar todavía contra los ${entD.length} de
+      entreno: hacen falta al menos ${MIN} de cada.</p>` : ""}
+    <div id="c-kc"></div>
+  </div>`;
+}
+
+/* ================= secciones ================= */
+
+function sectionActividad() {
+  const el = $("#sec-actividad");
+  const d = DATA.daily;
+  el.innerHTML = `<div class="cards">
+    <div class="card"><h3>Constancia</h3><p class="note">Cada cuadro es un día</p>
+      <div id="c-hm"></div></div>
+    <div class="card"><h3>Volumen semanal</h3><p class="note">Toneladas levantadas por semana</p>
+      <div id="c-vol"></div></div>
+    <div class="card"><h3>Pasos</h3><p class="note">Samsung Health · Galaxy Watch 6</p>
+      <div id="c-st"></div></div>
+    <div class="card"><h3>Sueño</h3><p class="note">Fases por noche, sin contar el tiempo despierto</p>
+      <div id="c-sl"></div></div>
+    ${tarjetaCalorias(d)}
+  </div>`;
+  const basalKc = [...d].reverse().find(x => x.br != null)?.br ?? null;
+  const conKc = d.filter(x => x.kc != null &&
+    !(basalKc != null && Math.abs(x.kc - basalKc) <= basalKc * 0.01));
+  if (conKc.length >= 2) {
+    const basal = basalKc;
+    lineChart($("#c-kc"), conKc, "kc", {
+      color: PAL.brass, unit: "kcal", label: "Calorías", avg: 7,
+      ref: basal, refLabel: basal ? `basal ${Math.round(basal)}` : "",
+    });
+    const card = $("#card-kc");
+    card.classList.add("zoomable");
+    ampliable(card, {
+      titulo: "Calorías quemadas",
+      nota: "Total diario de Health Connect · la línea marca tu metabolismo basal",
+      stats: resumen(conKc, "kc", 0, "kcal"),
+      dibuja: c => lineChart(c, conKc, "kc", {
+        color: PAL.brass, unit: "kcal", avg: 7,
+        ref: basal, refLabel: basal ? `basal ${Math.round(basal)}` : "", h: 430 }),
+    });
+  }
+
+  heatmap($("#c-hm"), d);
+  $("#c-hm").closest(".card").classList.add("zoomable");
+  ampliable($("#c-hm").closest(".card"), {
+    titulo: "Constancia", nota: "Cada cuadro es un día; el color, el volumen",
+    stats: [["Días entrenados", d.filter(x => x.v).length],
+            ["Volumen total", (d.reduce((a, x) => a + (x.v || 0), 0) / 1000).toFixed(0) + " t"]],
+    dibuja: c => heatmap(c, d),
+  });
+
+  const byWeek = {};
+  d.forEach(x => { if (!x.v) return;
+    const dt = new Date(x.d + "T00:00"), y = dt.getFullYear();
+    const w = Math.ceil(((dt - new Date(y, 0, 1)) / 864e5 + new Date(y, 0, 1).getDay() + 1) / 7);
+    const k = `${y}-${String(w).padStart(2, "0")}`;
+    byWeek[k] = byWeek[k] || { d: x.d, t: 0 }; byWeek[k].t += x.v / 1000; });
+  const semanas = Object.values(byWeek);
+  lineChart($("#c-vol"), semanas, "t",
+            { unit: "t", zero: true, label: "Volumen semanal", h: 220 });
+  $("#c-vol").closest(".card").classList.add("zoomable");
+  ampliable($("#c-vol").closest(".card"), {
+    titulo: "Volumen semanal", nota: "Toneladas levantadas por semana",
+    stats: resumen(semanas, "t", 1, "t"),
+    dibuja: c => lineChart(c, semanas, "t", { unit: "t", zero: true, h: 420 }),
+  });
+
+  const pasos = d.filter(x => x.st != null);
+  lineChart($("#c-st"), pasos, "st",
+            { avg: 7, unit: "pasos", zero: true, color: PAL.up, label: "Pasos diarios" });
+  $("#c-st").closest(".card").classList.add("zoomable");
+  ampliable($("#c-st").closest(".card"), {
+    titulo: "Pasos", nota: "Samsung Health · media móvil de 7 días",
+    stats: resumen(pasos, "st", 0),
+    dibuja: c => lineChart(c, pasos, "st",
+                           { avg: 7, unit: "pasos", zero: true, color: PAL.up, h: 420 }),
+  });
+
+  const noches = d.filter(x => x.sl != null);
+  const fases = [["sd", "sr", "sli"], ["#2a78d6", "#5598e7", "#9ec5f4"],
+                 ["profundo", "REM", "ligero"]];
+  stackChart($("#c-sl"), noches, ...fases, { label: "Fases del sueño" });
+  $("#c-sl").closest(".card").classList.add("zoomable");
+  ampliable($("#c-sl").closest(".card"), {
+    titulo: "Sueño", nota: "Fases por noche, sin contar el tiempo despierto",
+    stats: resumen(noches, "sl", 1, "h"),
+    dibuja: c => stackChart(c, noches, ...fases, { h: 420 }),
+  });
+}
+
+function sectionCuerpo() {
+  const el = $("#sec-cuerpo");
+  const b = DATA.daily.filter(x => x.kg != null);
+  if (!b.length) {
+    // puede no haber pesajes y si haber medidas de cinta: se meten a mano
+    const solaCinta = bloqueMedidas();
+    el.innerHTML = solaCinta.html
+      ? `<div class="cards">${solaCinta.html}</div>`
+      : `<div class="card"><h3>Cuerpo</h3><p class="blank">Sin pesajes todavía.</p></div>`;
+    solaCinta.pintar();
+    return;
+  }
+
+  // clave, etiqueta, unidad, decimales, si subir es bueno (null = neutro)
+  const M = [
+    ["kg", "Peso",               "kg",   1, false],
+    ["fa", "Grasa corporal",     "%",    1, false],
+    ["fm", "Grasa",              "kg",   1, false],
+    ["mu", "Masa muscular",      "kg",   1, true ],
+    ["sk", "Músculo esquelético","%",    1, true ],
+    ["lm", "Masa magra",         "kg",   1, true ],
+    ["wa", "Agua corporal",      "%",    1, true ],
+    ["pr", "Proteína",           "%",    1, true ],
+    ["vi", "Grasa visceral",     "",     1, false],
+    ["sc", "Grasa subcutánea",   "%",    1, false],
+    ["bmi","IMC",                "",     1, false],
+    ["bo", "Masa ósea",          "kg",   1, null ],
+    ["br", "Metabolismo basal",  "kcal", 0, null ],
+    ["ag", "Edad corporal",      "años", 0, false],
+  ].filter(([k]) => b.some(x => x[k] != null));
+
+  const last = b[b.length - 1];
+  // referencia: el pesaje mas cercano a hace 30 dias
+  const objetivo = new Date(last.d + "T00:00"); objetivo.setDate(objetivo.getDate() - 30);
+  let ref = b[0];
+  for (const x of b) if (new Date(x.d + "T00:00") <= objetivo) ref = x;
+
+  const tiles = M.map(([k, lbl, u, dec, bueno]) => {
+    const v = last[k], p = ref[k];
+    let delta = "";
+    if (v != null && p != null && ref !== last) {
+      const d = v - p;
+      const cls = bueno === null || Math.abs(d) < 0.05 ? "flat"
+                : (d > 0) === bueno ? "up" : "down";
+      delta = `<span class="chg ${cls}">${d > 0 ? "+" : ""}${d.toFixed(dec)}</span>`;
+    }
+    return `<div class="tile">
+      <span class="v">${v != null ? v.toFixed(dec) : "—"}<em>${u}</em></span>
+      <span class="l">${lbl}</span>${delta}</div>`;
+  }).join("");
+
+  const charts = M.filter(([k]) => b.filter(x => x[k] != null).length >= 2)
+    .map(([k, lbl, u]) => `<div class="mini"><h4>${lbl}</h4><div id="cb-${k}"></div></div>`)
+    .join("");
+
+  const cols = ["d", ...M.map(([k]) => k)];
+  const filas = [...b].reverse().slice(0, 20).map(x => `<tr>
+      <td>${longd(x.d)}</td>
+      ${M.map(([k, , , dec]) => `<td>${x[k] != null ? x[k].toFixed(dec) : "—"}</td>`).join("")}
+    </tr>`).join("");
+
+  const cinta = bloqueMedidas();
+
+  el.innerHTML = `<div class="cards">
+    <div class="card">
+      <h3>Ahora mismo</h3>
+      <p class="note">${longd(last.d)} · el cambio es frente a hace 30 días</p>
+      <div class="tiles wide">${tiles}</div>
+    </div>
+    <div class="card">
+      <h3>Evolución</h3>
+      <p class="note">${b.length} pesajes desde ${longd(b[0].d)}</p>
+      <div class="minigrid">${charts}</div>
+    </div>
+    <div class="card">
+      <h3>Últimos pesajes</h3>
+      <div class="tblwrap"><table>
+        <thead><tr><th>Fecha</th>${M.map(([, l, u]) =>
+          `<th>${l}${u ? " (" + u + ")" : ""}</th>`).join("")}</tr></thead>
+        <tbody>${filas}</tbody></table></div>
+    </div>
+    ${cinta.html}
+  </div>`;
+
+  const color = { fa: PAL.down, fm: PAL.down, sc: PAL.down, vi: PAL.down,
+                  mu: PAL.up, sk: PAL.up, lm: PAL.up, pr: PAL.up, wa: PAL.steel };
+  M.forEach(([k, lbl, u, dec]) => {
+    const box = $("#cb-" + k);
+    if (!box) return;
+    const col = color[k] || PAL.brass;
+    lineChart(box, b, k, { color: col, unit: u, label: lbl, h: 150 });
+    ampliable(box.closest(".mini"), {
+      titulo: lbl, nota: `${b.filter(x => x[k] != null).length} pesajes desde ${longd(b[0].d)}`,
+      stats: resumen(b, k, dec, u),
+      dibuja: c => lineChart(c, b, k, { color: col, unit: u, h: 430 }),
+    });
+  });
+
+  cinta.pintar();
+}
+
+/* ---------- medidas de cinta ----------
+   Van dentro de "Cuerpo" y no en una pestana propia: son dato corporal, y
+   con dos metricas al principio una pestana entera quedaria vacia.
+
+   La referencia NO es "hace 30 dias" como en los pesajes, sino la tanda
+   anterior: estas medidas se toman cada semana y lo que interesa es que ha
+   cambiado desde la ultima vez.                                            */
+
+function bloqueMedidas() {
+  const CLAVES = [
+    ["tcu", "Cuello",           null],
+    ["tpe", "Pecho",            null],
+    ["tci", "Cintura",          false],
+    ["tab", "Abdomen",          false],
+    ["tca", "Cadera",           false],
+    ["tbi", "Brazo izq.",       null],
+    ["tbd", "Brazo der.",       null],
+    ["tai", "Antebrazo izq.",   null],
+    ["tad", "Antebrazo der.",   null],
+    ["tmi", "Muslo izq.",       null],
+    ["tmd", "Muslo der.",       null],
+    ["tgi", "Gemelo izq.",      null],
+    ["tgd", "Gemelo der.",      null],
+  ];
+
+  const t = DATA.daily.filter(x => CLAVES.some(([k]) => x[k] != null));
+  if (!t.length) return { html: "", pintar: () => {} };
+
+  // solo las que se han medido alguna vez: lo que no se mide no se pinta
+  const M = CLAVES.filter(([k]) => t.some(x => x[k] != null));
+  const last = t[t.length - 1];
+  const prev = t.length > 1 ? t[t.length - 2] : null;
+
+  const tiles = M.map(([k, lbl, bueno]) => {
+    const v = last[k], p = prev ? prev[k] : null;
+    let chg = "";
+    if (v != null && p != null) {
+      const d = v - p;
+      // sin criterio de "mejor" en las extremidades: crecer un brazo es
+      // bueno y crecer otra cosa depende del objetivo, asi que solo se
+      // colorean cintura, abdomen y cadera, que si son marcador de grasa
+      const cls = bueno === null || Math.abs(d) < 0.05 ? "flat"
+                : (d > 0) === bueno ? "up" : "down";
+      chg = `<span class="chg ${cls}">${d > 0 ? "+" : ""}${d.toFixed(1)}</span>`;
+    }
+    return `<div class="tile">
+      <span class="v">${v != null ? v.toFixed(1) : "—"}<em>cm</em></span>
+      <span class="l">${lbl}</span>${chg}</div>`;
+  }).join("");
+
+  const charts = M.filter(([k]) => t.filter(x => x[k] != null).length >= 2)
+    .map(([k, lbl]) => `<div class="mini"><h4>${lbl}</h4><div id="tm-${k}"></div></div>`)
+    .join("");
+
+  const filas = [...t].reverse().slice(0, 20).map(x => `<tr>
+      <td>${longd(x.d)}</td>
+      ${M.map(([k]) => `<td>${x[k] != null ? x[k].toFixed(1) : "—"}</td>`).join("")}
+      <td class="nota">${x.tn ? x.tn : ""}</td>
+    </tr>`).join("");
+
+  const desde = longd(t[0].d);
+  const html = `
+    <div class="card">
+      <h3>Cinta métrica</h3>
+      <p class="note">${longd(last.d)}${prev ? " · el cambio es frente a la medición anterior, "
+        + longd(prev.d) : ""}</p>
+      <div class="tiles wide">${tiles}</div>
+    </div>
+    ${charts ? `<div class="card">
+      <h3>Evolución de las medidas</h3>
+      <p class="note">${t.length} mediciones desde ${desde}</p>
+      <div class="minigrid">${charts}</div>
+    </div>` : ""}
+    <div class="card">
+      <h3>Historial de medidas</h3>
+      <div class="tblwrap"><table>
+        <thead><tr><th>Fecha</th>${M.map(([, l]) => `<th>${l} (cm)</th>`).join("")}
+          <th>Nota</th></tr></thead>
+        <tbody>${filas}</tbody></table></div>
+    </div>`;
+
+  const pintar = () => {
+    M.forEach(([k, lbl]) => {
+      const box = $("#tm-" + k);
+      if (!box) return;
+      const col = k === "tab" || k === "tci" || k === "tca" ? PAL.down : PAL.up;
+      lineChart(box, t, k, { color: col, unit: "cm", label: lbl, h: 150 });
+      ampliable(box.closest(".mini"), {
+        titulo: lbl,
+        nota: `${t.filter(x => x[k] != null).length} mediciones desde ${desde}`,
+        stats: resumen(t, k, 1, "cm"),
+        dibuja: c => lineChart(c, t, k, { color: col, unit: "cm", h: 430 }),
+      });
+    });
+  };
+
+  return { html, pintar };
+}
+
+/* ================= resumen ================= */
+
+const IN = DATA.insights || {};
+
+const num = (v, d = 0) => v == null ? "—" : v.toLocaleString("es-ES",
+  { minimumFractionDigits: d, maximumFractionDigits: d });
+
+function delta(act, prev, { dec = 0, bueno = true, unidad = "" } = {}) {
+  if (act == null || prev == null) return "";
+  const d = act - prev;
+  if (Math.abs(d) < (dec ? 0.05 : 0.5)) return `<span class="flat">igual</span>`;
+  const cls = (d > 0) === bueno ? "up" : "down";
+  return `<span class="${cls}">${d > 0 ? "+" : ""}${num(d, dec)}${unidad}</span>`;
+}
+
+function tablaComparativa(a, b, etiquetas, filas) {
+  return `<table class="cmp">
+    <thead><tr><th></th><th>${etiquetas[0]}</th><th>${etiquetas[1]}</th><th>Cambio</th></tr></thead>
+    <tbody>${filas.map(([k, lbl, dec, bueno, u]) => `<tr>
+      <td>${lbl}</td>
+      <td>${num(a[k], dec)}${u || ""}</td>
+      <td>${num(b[k], dec)}${u || ""}</td>
+      <td>${delta(a[k], b[k], { dec, bueno, unidad: u || "" })}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+function balanceMuscular(ms) {
+  // por desviación, no por volumen: lo interesante es lo que se ha movido
+  const top = [...ms].sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio)).slice(0, 10);
+  const max = Math.max(...top.map(m => Math.max(m.pct_reciente, m.pct_historico)), 1);
+  return `<div class="bal">${top.map(m => {
+    const col = m.desvio < -4 ? "var(--down)" : m.desvio > 4 ? "var(--up)" : "var(--steel)";
+    return `<div class="fila">
+      <span class="nom" title="${m.musculo}">${m.musculo}</span>
+      <span class="barra" title="mes ${m.pct_reciente}% · histórico ${m.pct_historico}%">
+        <i style="width:${(m.pct_reciente / max * 100).toFixed(1)}%;background:${col}"></i>
+        <u style="left:${(m.pct_historico / max * 100).toFixed(1)}%"></u>
+      </span>
+      <span class="val" style="color:${m.desvio < -4 ? "var(--down)" : m.desvio > 4 ? "var(--up)" : "var(--ink-3)"}">
+        ${m.desvio > 0 ? "+" : ""}${m.desvio}</span>
+    </div>`;
+  }).join("")}
+  <p class="note" style="margin:6px 0 0">Barra: reparto del último mes. Marca gris:
+  tu reparto histórico. La cifra es la desviación en puntos.</p></div>`;
+}
+
+function avisos() {
+  const out = [];
+  const olvidados = (IN.musculos || []).filter(m => m.desvio < -4)
+    .sort((a, b) => a.desvio - b.desvio).slice(0, 3);
+  if (olvidados.length) {
+    out.push(["🦵", `Estás dejando de lado <b>${olvidados.map(m => m.musculo).join(", ")}</b>.
+      ${olvidados[0].musculo} era el ${olvidados[0].pct_historico}% de tu volumen
+      histórico y este mes es el ${olvidados[0].pct_reciente}%.`]);
+  }
+  const c = IN.cuerpo || {};
+  if (c.grasa_kg?.d90 != null && c.musculo?.d90 != null) {
+    const g = c.grasa_kg.d90, m = c.musculo.d90;
+    if (Math.abs(g) > 1 || Math.abs(m) > 1) {
+      const parte = g + m === 0 ? 0 : Math.abs(g) / (Math.abs(g) + Math.abs(m)) * 100;
+      const verbo = (x) => x > 0 ? "sumado" : "perdido";
+      const mismo = (g > 0) === (m > 0);
+      out.push([g > 0 ? "⚖️" : "🔥",
+        mismo
+          ? `En 90 días has ${verbo(g)} <b>${num(Math.abs(g), 1)} kg de grasa</b> y
+             <b>${num(Math.abs(m), 1)} kg de músculo</b>. El ${num(parte, 0)}% de lo
+             ${g > 0 ? "ganado" : "perdido"} es grasa.`
+          : `En 90 días has ${verbo(g)} <b>${num(Math.abs(g), 1)} kg de grasa</b> y
+             ${verbo(m)} <b>${num(Math.abs(m), 1)} kg de músculo</b>.`]);
+    }
+  }
+  const est = IN.ejercicios || [];
+  const abandonados = est.filter(e => e.estado === "abandonado").length;
+  if (abandonados) {
+    const cerca = est.filter(e => e.estado === "abandonado")
+      .sort((a, b) => a.dias - b.dias).slice(0, 2).map(e => e.titulo);
+    out.push(["📉", `<b>${abandonados} ejercicios</b> llevan más de dos meses sin tocarse.
+      Los más recientes: ${cerca.join(", ")}.`]);
+  }
+  const r = IN.rachas || {};
+  if (r.actual >= 3) {
+    out.push(["🔥", `Llevas <b>${r.actual} semanas seguidas</b> entrenando.
+      Tu mejor racha son ${r.mejor}.`]);
+  }
+  return out;
+}
+
+function sectionResumen() {
+  const el = $("#sec-resumen");
+  // Los entrenos se cuentan desde un corte (cambio de gimnasio). Decirlo evita
+  // que parezca que falta historia, y avisa de contra qué se compara.
+  const aviso = DATA.desde ? `<div class="card"><h3>Desde ${longd(DATA.desde)}</h3>
+    <p class="note">Solo cuentan los entrenos a partir de esa fecha, cuando
+    cambiaste de gimnasio. Los anteriores siguen en Hevy, pero no entran en
+    récords, progresiones ni volumen: otras máquinas y otras poleas hacen que
+    60 kg allí no sean 60 kg aquí.</p></div>` : "";
+  const s = IN.semana || {}, sp = IN.semana_previa || {};
+  const m = IN.mes || {}, mp = IN.mes_previo || {};
+  const c = IN.cuerpo || {};
+  const r = IN.rachas || {};
+  const est = IN.ejercicios || [];
+  const cuenta = e => est.filter(x => x.estado === e).length;
+
+  const cuerpoFilas = [
+    ["peso", "Peso", "kg", 1, false],
+    ["grasa_kg", "Grasa", "kg", 1, false],
+    ["musculo", "Músculo", "kg", 1, true],
+    ["visceral", "Grasa visceral", "", 1, false],
+  ].filter(([k]) => c[k]?.actual != null);
+
+  el.innerHTML = `<div class="cards">${aviso}
+
+    <div class="card">
+      <h3>Cómo vas</h3>
+      <p class="note">Lo que ha cambiado, no lo que hay</p>
+      <div class="pills">
+        <span class="pill">Racha <b>${r.actual || 0}</b> semanas</span>
+        <span class="pill">Mejor <b>${r.mejor || 0}</b></span>
+        <span class="pill">Último entreno hace <b>${r.dias_desde ?? "—"}</b> d</span>
+        <span class="pill">Progresan <b>${cuenta("progresa")}</b></span>
+        <span class="pill">Estancados <b>${cuenta("estancado")}</b></span>
+        <span class="pill">Abandonados <b>${cuenta("abandonado")}</b></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+        ${avisos().map(([ic, t]) =>
+          `<div class="aviso"><span class="ic">${ic}</span><span>${t}</span></div>`).join("")}
+      </div>
+    </div>
+
+    <div class="duo">
+      <div class="card"><h3>Esta semana</h3>
+        <p class="note">${s.desde} → ${s.hasta}, frente a los 7 días anteriores</p>
+        ${tablaComparativa(s, sp, ["Ahora", "Antes"], [
+          ["sesiones", "Sesiones", 0, true, ""],
+          ["volumen", "Volumen", 0, true, " kg"],
+          ["series", "Series", 0, true, ""],
+          ["minutos", "Minutos", 0, true, ""],
+          ["pasos", "Pasos/día", 0, true, ""],
+          ["sueno", "Sueño", 2, true, " h"],
+        ])}
+      </div>
+      <div class="card"><h3>Este mes</h3>
+        <p class="note">Últimos 30 días, frente a los 30 anteriores</p>
+        ${tablaComparativa(m, mp, ["Ahora", "Antes"], [
+          ["sesiones", "Sesiones", 0, true, ""],
+          ["volumen", "Volumen", 0, true, " kg"],
+          ["series", "Series", 0, true, ""],
+          ["minutos", "Minutos", 0, true, ""],
+          ["pasos", "Pasos/día", 0, true, ""],
+          ["sueno", "Sueño", 2, true, " h"],
+        ])}
+      </div>
+    </div>
+
+    <div class="duo">
+      <div class="card"><h3>Equilibrio muscular</h3>
+        <p class="note">Reparto del último mes contra tu histórico</p>
+        ${balanceMuscular(IN.musculos || [])}
+      </div>
+      <div class="card"><h3>Composición corporal</h3>
+        <p class="note">${cuerpoFilas.length ? "Cambio a 7, 30 y 90 días" : ""}</p>
+        ${cuerpoFilas.length ? `<table class="cmp">
+          <thead><tr><th></th><th>Ahora</th><th>7 d</th><th>30 d</th><th>90 d</th></tr></thead>
+          <tbody>${cuerpoFilas.map(([k, lbl, u, dec, bueno]) => `<tr>
+            <td>${lbl}</td>
+            <td>${num(c[k].actual, dec)}${u}</td>
+            ${[7, 30, 90].map(dd => `<td>${
+              c[k]["d" + dd] == null ? "—" : delta(c[k].actual, c[k].actual - c[k]["d" + dd],
+                                                   { dec, bueno })}</td>`).join("")}
+          </tr>`).join("")}</tbody></table>`
+        : `<p class="blank">Sin pesajes suficientes.</p>`}
+      </div>
+    </div>
+
+  </div>`;
+}
+
+/* ================= navegación ================= */
+
+let built = {};
+$("#tabs").addEventListener("click", e => {
+  const b = e.target.closest(".tab"); if (!b) return;
+  const t = b.dataset.t;
+  document.querySelectorAll(".tab").forEach(x =>
+    x.setAttribute("aria-selected", String(x.dataset.t === t)));
+  ["resumen", "fuerza", "actividad", "cuerpo"].forEach(k =>
+    $("#sec-" + k).hidden = k !== t);
+  if (!built[t]) {
+    if (t === "fuerza") render();
+    if (t === "actividad") sectionActividad();
+    if (t === "cuerpo") sectionCuerpo();
+    built[t] = true;
+  }
+});
+
+sectionResumen();
+</script>

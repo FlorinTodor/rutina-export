@@ -1,0 +1,23 @@
+# Copia a config.toml (ignorado por git) para ejecutar en local.
+# En GitHub Actions todo esto viene de Secrets, no de este fichero.
+
+[hevy]
+# "api"  -> requiere Hevy Pro. Clave en https://hevy.com/settings?developer
+# "csv"  -> plan B gratis: export manual desde la app, fichero en data/raw/hevy_export.csv
+mode = "api"
+api_key = ""
+csv_path = "data/raw/hevy_export.csv"
+# Solo cuentan los entrenos desde esta fecha. Cambiar de gimnasio invalida las
+# comparaciones: otras máquinas y otras poleas, así que 60 kg allí no son 60 kg
+# aquí. No borra nada, solo deja de contarlo. Vacío = todo el histórico.
+desde = ""
+
+[notion]
+token = ""
+# Se rellenan solos al ejecutar:  python -m rutina init-notion --parent-page <id>
+parent_page_id = ""
+db_dias = ""
+db_entrenos = ""
+db_series = ""
+db_ejercicios = ""
+db_medidas = ""
