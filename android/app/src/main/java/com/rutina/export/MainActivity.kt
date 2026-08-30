@@ -185,6 +185,13 @@ class MainActivity : ComponentActivity() {
             raiz.addView(tarjeta(hechos))
         }
 
+        // --- ventana de dias ---
+        raiz.addView(rotulo("Cuántos días leer"))
+        raiz.addView(parrafo("Cada lectura reescribe esos días en el histórico, así " +
+                "que una ventana más ancha corrige días viejos que se midieron a " +
+                "medias. Cuesta unos segundos más y nada de batería."))
+        raiz.addView(selectorDias())
+
         // --- estado ---
         raiz.addView(rotulo("Estado"))
         raiz.addView(tarjeta(listOf(
@@ -267,6 +274,38 @@ class MainActivity : ComponentActivity() {
             })
             pintar()
         })
+    }
+
+    /**
+     * Ventana de lectura, en dias.
+     *
+     * Estaba fija en 7 y solo se podia cambiar lanzando la app desde el PC con
+     * un extra, que no es forma. Los valores no son arbitrarios: 7 cubre la
+     * semana en curso, 30 y 90 sirven para recuperar tras un tiempo sin
+     * sincronizar, y 365 para una carga inicial.
+     */
+    private fun selectorDias(): LinearLayout {
+        val fila = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+        }
+        for (n in listOf(7, 30, 90, 365)) {
+            val elegido = dias == n
+            fila.addView(MaterialButton(this, null,
+                if (elegido) com.google.android.material.R.attr.materialButtonStyle
+                else com.google.android.material.R.attr.materialButtonOutlinedStyle
+            ).apply {
+                text = if (n == 365) "1 año" else "$n d"
+                layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+                    .apply { marginEnd = dp(6) }
+                setOnClickListener {
+                    dias = n
+                    decir("Ventana de $n días. Se aplica en la próxima lectura.")
+                    pintar()
+                }
+            })
+        }
+        return fila
     }
 
     private data class Punto(val ok: Boolean, val etiqueta: String, val detalle: String,
