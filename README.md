@@ -1,169 +1,167 @@
 # rutina-export
 
-**Saca tus datos de Health Connect, Samsung Health, FitDays y Hevy a Notion y a
-un dashboard web, solo, cada día, sin pagar suscripciones.**
+**Get your Health Connect, Samsung Health, FitDays and Hevy data into Notion and
+a web dashboard — automatically, every day, without paying a subscription.**
 
-Las apps que exportan Health Connect automáticamente cobran por ello. Esta no,
-y no por generosidad: el automatismo que cobran es el permiso
-`READ_HEALTH_DATA_IN_BACKGROUND`, que **es gratis**. Lo que lo bloquea es la
-revisión de Google Play para apps de salud — y como esta app se instala por
-ADB y no se publica, no hay revisión que pasar.
+> 🇪🇸 [Léelo en español](README.es.md) · code comments and inline docs are in Spanish.
+
+Apps that export Health Connect on a schedule charge for it. This one doesn't —
+and not out of generosity. The automation they charge for is the
+`READ_HEALTH_DATA_IN_BACKGROUND` permission, which **is free**. What gates it is
+Google Play's review for health apps, and since this app is installed over ADB
+and never published, there is no review to pass.
 
 ```
-                 ┌─ Samsung Health ─┐
-   reloj / móvil ─┤                  ├─► Health Connect ─┐
-                 └─ Hevy ───────────┘                   │
-                                                        ├─► la app de android/
-   FitDays (báscula) ─► Health Connect ─────────────────┘         │
-                     └─ su export propio (15 métricas) ───────────┤
-                                                                  ▼
-   cinta métrica ────► se teclea en la app ──────────► data/inbox/ en tu repo
-                                                                  │
-   Hevy (API) ──────────────────────────────────────► workflow ───┤
-                                                                  ▼
-                                            Notion + dashboard + GitHub Pages
+                  ┌─ Samsung Health ─┐
+   watch / phone ─┤                  ├─► Health Connect ─┐
+                  └─ Hevy ───────────┘                   │
+                                                         ├─► the android/ app
+   FitDays (scale) ─► Health Connect ────────────────────┘         │
+                   └─ its own export (15 metrics) ────────────────┤
+                                                                   ▼
+   tape measure ─────► typed into the app ─────────► data/inbox/ in your repo
+                                                                   │
+   Hevy (API) ───────────────────────────────────────► workflow ───┤
+                                                                   ▼
+                                             Notion + dashboard + GitHub Pages
 ```
 
-## Qué recoge, y de dónde
+## What it collects, and from where
 
-| fuente | qué saca | cómo |
+| source | what it gets | how |
 |---|---|---|
-| **Health Connect** | pasos, distancia, calorías, sueño con fases, pulso, HRV, SpO2 | app propia, en segundo plano |
-| **Samsung Health** | es quien alimenta lo anterior desde el reloj | vía Health Connect |
-| **FitDays** | las **15** métricas de la báscula: grasa visceral y subcutánea, músculo esquelético, proteína, edad corporal… | su export, manejando su interfaz |
-| **Hevy** | entrenos, series, repeticiones, pesos, RPE, récords, 1RM estimado | su API oficial |
-| **cinta métrica** | pecho, abdomen, cintura, cadera, brazos, muslos, gemelos | a mano, en la app |
-| **Notion** | cinco bases relacionadas: Días, Entrenos, Series, Ejercicios, Medidas | API oficial |
+| **Health Connect** | steps, distance, calories, sleep stages, heart rate, HRV, SpO2 | own app, in the background |
+| **Samsung Health** | it's what feeds the above from your watch | via Health Connect |
+| **FitDays** | all **15** scale metrics: visceral and subcutaneous fat, skeletal muscle, protein, body age… | its export, by driving its UI |
+| **Hevy** | workouts, sets, reps, weights, RPE, PRs, estimated 1RM | official API |
+| **tape measure** | chest, abdomen, waist, hips, arms, thighs, calves | typed by hand, in the app |
+| **Notion** | five related databases: Days, Workouts, Sets, Exercises, Measurements | official API |
 
-## Por qué hace falta una app propia
+## Why a dedicated app is needed
 
-**Samsung Health no tiene API en la nube.** Nada fuera del móvil puede leer tus
-pasos ni tu sueño. Y **Health Connect es una base de datos local**: solo la
-puede leer una app instalada en el teléfono. No hay atajo por servidor.
+**Samsung Health has no cloud API.** Nothing outside the phone can read your
+steps or your sleep. And **Health Connect is a local database**: only an app
+installed on the device can read it. There is no server-side shortcut.
 
-**FitDays solo escribe 4 de sus 15 métricas en Health Connect.** Las otras
-—visceral, subcutánea, esquelético, proteína, edad corporal— no salen de su
-app, así que hay que sacarlas de su propio export.
+**FitDays only writes 4 of its 15 metrics into Health Connect.** The rest —
+visceral, subcutaneous, skeletal muscle, protein, body age — never leave its
+app, so they have to come from its own export.
 
-**Hevy sí tiene API**, y por eso los entrenos los trae el workflow sin tocar el
-móvil.
+**Hevy does have an API**, which is why workouts are fetched by the workflow
+without touching the phone at all.
 
-## Qué necesitas
+## Requirements
 
-- Un móvil Android 10 o superior con Health Connect.
-- Un ordenador con `adb` para instalar la app **una vez**. Después el móvil va
-  solo, con datos móviles y la pantalla bloqueada.
-- Cuentas de Hevy (con API key, requiere Hevy Pro) y Notion. Las dos opcionales:
-  sin Hevy tendrás solo salud, sin Notion tendrás solo el dashboard.
-- Un repositorio de GitHub, que hace de almacén y de servidor.
+- An Android 10+ phone with Health Connect.
+- A computer with `adb`, to install the app **once**. After that the phone runs
+  on its own, on mobile data, with the screen locked.
+- Hevy (API key, needs Hevy Pro) and Notion accounts. Both optional: without
+  Hevy you get health only, without Notion you get the dashboard only.
+- A GitHub repository, which acts as both storage and server.
 
-## Instalación
+## Setup
 
-### 1. La app del móvil
+### 1. The phone app
 
 ```bash
-android/build.sh                                  # compila el APK
-python scripts/health_pull.py --instalar          # lo instala por ADB
-python scripts/health_pull.py --permisos          # concede los permisos
+android/build.sh                                  # builds the APK
+python scripts/health_pull.py --instalar          # installs it over ADB
+python scripts/health_pull.py --permisos          # grants the permissions
 ```
 
-Hace falta un JDK **con `javac`** (el `java` de muchas distribuciones trae solo
-el runtime). `build.sh` busca uno solo.
+You need a JDK **with `javac`** (many distributions ship only the runtime).
+`build.sh` finds one by itself.
 
-### 2. El token
+### 2. The token
 
-En GitHub: Settings → Developer settings → **Fine-grained tokens**.
+On GitHub: Settings → Developer settings → **Fine-grained tokens**.
 
-- Repository access: **Only select repositories** → el tuyo
-- Permissions → Repository permissions → **Contents: Read and write**. Nada más.
+- Repository access: **Only select repositories** → yours
+- Permissions → Repository permissions → **Contents: Read and write**. Nothing else.
 
-Créalo **desde el navegador del móvil** y pégalo en la app. Así no tiene que
-viajar de un aparato a otro, que es donde se filtran.
+Create it **from the phone's browser** and paste it into the app, so it never
+has to travel between devices — which is where tokens leak.
 
-En la app, pon también tu repositorio (`usuario/repositorio`) y dale a
-*Guardar*. La pantalla es una lista de comprobación: lo que falte sale arriba
-en rojo con su botón.
+In the app, also set your repository (`user/repo`) and hit *Save*. The screen is
+a checklist: whatever is missing shows up at the top, in red, with a button.
 
-### 3. FitDays (opcional)
+### 3. FitDays (optional)
 
-Si usas su báscula y quieres las 15 métricas, activa el servicio de
-accesibilidad desde la app y dale acceso a la carpeta `Documents`. Hace el
-recorrido por su interfaz él solo.
+If you use their scale and want all 15 metrics, enable the accessibility
+service from the app and grant it access to the `Documents` folder. It drives
+FitDays' interface on its own.
 
-> El servicio está limitado a FitDays en `res/xml/accesibilidad.xml`. No ve
-> ninguna otra app.
+> The service is restricted to FitDays in `res/xml/accesibilidad.xml`. It sees
+> no other app.
 
-### 4. El resto
+### 4. Everything else
 
 ```bash
-cp config.example.toml config.toml     # pon aquí tus claves de Hevy y Notion
+cp config.example.toml config.toml     # your Hevy and Notion keys
 pip install -r requirements.txt
-python scripts/configurar.py           # el resto lo hace él
+python scripts/configurar.py           # it does the rest
 ```
 
-`configurar.py` crea las cinco bases de Notion, sube los ocho secretos al
-repositorio, pone las variables y enciende Pages. Es idempotente: se puede
-repetir sin miedo, y con `--dry-run` dice qué haría sin tocar nada.
+`configurar.py` creates the five Notion databases, uploads the eight secrets to
+your repository, sets the variables and turns on Pages. It is idempotent, and
+`--dry-run` tells you what it would do without touching anything.
 
-Sin él habría que copiar ocho identificadores a mano de `config.toml` a la
-pantalla de Secrets de GitHub, que es la parte más tediosa de montar esto y
-donde más se equivoca uno.
+## How it runs once set up
 
-## Cómo funciona una vez montado
-
-| cuándo | qué pasa |
+| when | what happens |
 |---|---|
-| 20:45 | la app lee Health Connect y sube a `data/inbox/` |
-| al desbloquear el móvil | si toca, exporta FitDays y lo sube |
-| ese push | dispara el workflow al instante |
-| 21:00 | el cron, como red de seguridad |
+| 20:45 | the app reads Health Connect and uploads to `data/inbox/` |
+| on unlock | if due, it exports FitDays and uploads it |
+| that push | fires the workflow immediately |
+| 21:00 | the cron, as a safety net |
 
-El workflow importa lo que haya en el inbox, trae los entrenos de Hevy, escribe
-en Notion y republica el dashboard en GitHub Pages.
+The workflow imports whatever is in the inbox, fetches Hevy workouts, writes to
+Notion and republishes the dashboard on GitHub Pages.
 
-**No hace falta el ordenador.** Los scripts de `scripts/` siguen ahí por si lo
-prefieres, pero el móvil se basta.
+**Your computer is not needed.** The `scripts/` bridge is still there if you
+prefer it, but the phone is enough.
 
-## Detalles que costaron encontrar
+## Things that were hard to find out
 
-Están documentados donde ocurren, pero estos merecen aviso:
+Documented where they happen, but these deserve a warning:
 
-- **El export de Health Connect no acumula.** La ventana son unos días, así que
-  el histórico vive en `data/raw/*.jsonl` y lo que llega pisa lo de esa fecha.
-  Un día medido a medias se corrige solo en la siguiente pasada.
-- **Manejar la interfaz de otra app exige la pantalla desbloqueada.** No se
-  puede saltar. Da igual: el export de FitDays trae el histórico completo.
-- **Los ejercicios se agrupan por su id, nunca por nombre**: Hevy congela el
-  nombre traducido de cada entreno, y cambiar el idioma parte el historial.
-- **Las calorías de Hevy ya están en Health Connect**, porque Hevy escribe ahí.
-  Sumarlas aparte sería contarlas dos veces.
-- **`uiautomator dump` congela las animaciones de la app que estés mirando**, y
-  no se recupera sola. Si automatizas interfaces, tenlo en cuenta.
+- **Health Connect exports don't accumulate.** The window is a few days, so the
+  history lives in `data/raw/*.jsonl` and whatever arrives overwrites that date.
+  A day measured halfway fixes itself on the next run.
+- **Driving another app's UI requires an unlocked screen.** There is no way
+  around it. It doesn't matter much: FitDays' export always contains the full
+  history, so skipping days delays but never loses.
+- **Exercises are grouped by id, never by name**: Hevy freezes the translated
+  name into each workout, so changing the app's language splits your history.
+- **Hevy's calories are already in Health Connect**, because Hevy writes there.
+  Adding them separately would double-count them.
+- **`uiautomator dump` freezes the animations of whatever app you're looking
+  at**, and it doesn't recover on its own. Worth knowing if you automate UIs.
 
-## Privacidad
+## Privacy
 
-Tus datos van de tu móvil a **tu** repositorio. No hay servidor intermedio ni
-cuenta de nadie más. Si lo pones privado, GitHub Pages sobre repositorio
-privado requiere Pro (gratis con el Student Pack).
+Your data goes from your phone to **your** repository. No middleman server, no
+one else's account. If you keep it private, GitHub Pages over a private repo
+requires Pro (free with the Student Pack).
 
-El token vive en `SharedPreferences` privadas del móvil; en un teléfono sin
-root ninguna otra app puede leerlas.
+The token lives in the phone's private `SharedPreferences`; on an unrooted
+device no other app can read them.
 
-## Pruebas
+## Tests
 
 ```bash
-python tests/test_history.py        # el histórico sobrevive a una ventana corta
-python tests/test_sync_offline.py   # la sincronización no duplica en Notion
-python tests/test_movil.py          # el borrado en el móvil no se pasa
+python tests/test_history.py        # history survives a short export window
+python tests/test_sync_offline.py   # syncing never duplicates in Notion
+python tests/test_movil.py          # the phone-deletion guard holds
 npm install jsdom && node tests/test_dashboard.mjs
 ```
 
-Se ejecutan en cada push junto con la compilación del APK.
+They run on every push, along with the APK build.
 
-## Licencia
+## License
 
-MIT. Ver [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
-Las animaciones de ejercicios que muestra el dashboard son de Hevy y de
-[ExerciseGymGifsDB](https://github.com/JahelCuadrado/ExerciseGymGifsDB); ni unas
-ni otras se distribuyen aquí.
+Exercise animations shown in the dashboard come from Hevy and from
+[ExerciseGymGifsDB](https://github.com/JahelCuadrado/ExerciseGymGifsDB); neither
+is redistributed here.
