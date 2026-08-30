@@ -14,13 +14,16 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.flow.first
 import com.rutina.export.Ajustes.dias
+import com.rutina.export.Ajustes.horaMin
 import com.rutina.export.Ajustes.repo
 import com.rutina.export.Ajustes.ruta
 import com.rutina.export.Ajustes.token
 import com.rutina.export.Ajustes.ultimaSubida
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 /**
@@ -81,12 +84,27 @@ class TrabajoDiario(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
     companion object {
         private const val TAG = "rutina"
         private const val TRABAJO = "rutina-diario"
-        val HORA: LocalTime = LocalTime.of(20, 45)
+        /** La hora a la que toca, segun los ajustes. Por defecto las 20:45. */
+        fun hora(ctx: Context): LocalTime = LocalTime.of(ctx.horaMin / 60, ctx.horaMin % 60)
 
-        /** Programa la ejecucion diaria. Idempotente: llamarlo de mas no duplica. */
+        /**
+         * Programa la ejecucion diaria a la hora de los ajustes.
+         *
+         * Se re-encola siempre (CANCEL_AND_REENQUEUE), no se "actualiza".
+         * Con ExistingPeriodicWorkPolicy.UPDATE, WorkManager conserva el
+         * calendario del trabajo que ya estaba encolado y SE SALTA el nuevo
+         * initialDelay: el trabajo seguia disparandose a la hora en que se
+         * encolo la primera vez, y cambiar la hora no hacia absolutamente
+         * nada. Se vio en el dumpsys del movil, con la pantalla anunciando
+         * las 20:45 y Android con el trabajo puesto a las 18:28.
+         *
+         * Re-encolar de mas es barato: llamarlo al abrir la app solo mueve la
+         * proxima ejecucion al siguiente hueco de la hora elegida, que es
+         * justo donde ya deberia estar.
+         */
         fun programar(ctx: Context) {
             val ahora = LocalDateTime.now()
-            var proxima = ahora.toLocalDate().atTime(HORA)
+            var proxima = ahora.toLocalDate().atTime(hora(ctx))
             if (!proxima.isAfter(ahora)) proxima = proxima.plusDays(1)
             val espera = Duration.between(ahora, proxima)
 
@@ -100,7 +118,7 @@ class TrabajoDiario(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
                 .build()
 
             WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
-                TRABAJO, ExistingPeriodicWorkPolicy.UPDATE, trabajo)
+                TRABAJO, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, trabajo)
             Log.i(TAG, "Programado para dentro de ${espera.toHours()}h ${espera.toMinutes() % 60}m")
         }
 
@@ -130,6 +148,27 @@ class TrabajoDiario(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
                         .setRequiredNetworkType(NetworkType.CONNECTED).build())
                     .build())
             Log.i(TAG, "Prueba del trabajo diario encolada")
+        }
+
+        /**
+         * Cuando va a saltar DE VERDAD, segun WorkManager, o null si no hay nada.
+         *
+         * La pantalla lo calculaba con el reloj a partir de la hora elegida,
+         * asi que enseñaba la hora que queriamos y no la que Android tenia
+         * puesta. Cuando las dos se separaron (ver `programar`) no habia forma
+         * de notarlo mirando la app.
+         */
+        suspend fun proximaReal(ctx: Context): LocalDateTime? = try {
+            WorkManager.getInstance(ctx)
+                .getWorkInfosForUniqueWorkFlow(TRABAJO).first()
+                .firstOrNull { !it.state.isFinished }
+                ?.nextScheduleTimeMillis
+                ?.takeIf { it > 0 && it != Long.MAX_VALUE }
+                ?.let {
+                    LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault())
+                }
+        } catch (e: Exception) {
+            null
         }
 
         suspend fun programado(ctx: Context): Boolean = try {

@@ -1,5 +1,6 @@
 package com.rutina.export
 
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
@@ -24,6 +25,7 @@ import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import com.rutina.export.Ajustes.carpetaDocs
 import com.rutina.export.Ajustes.dias
+import com.rutina.export.Ajustes.horaMin
 import com.rutina.export.Ajustes.repo
 import com.rutina.export.Ajustes.ruta
 import com.rutina.export.Ajustes.token
@@ -90,11 +92,16 @@ class MainActivity : ComponentActivity() {
      *  repinta cuando llega la respuesta. */
     private var trabajoProgramado = false
 
+    /** Cuando va a saltar de verdad, segun WorkManager. */
+    private var proximaEjecucion: LocalDateTime? = null
+
     private fun refrescarProgramado() {
         lifecycleScope.launch {
             val v = TrabajoDiario.programado(this@MainActivity)
-            if (v != trabajoProgramado) {
+            val n = TrabajoDiario.proximaReal(this@MainActivity)
+            if (v != trabajoProgramado || n != proximaEjecucion) {
                 trabajoProgramado = v
+                proximaEjecucion = n
                 if (::raiz.isInitialized && raiz.childCount > 0) pintar()
             }
         }
@@ -136,6 +143,7 @@ class MainActivity : ComponentActivity() {
                 .permissionController.getGrantedPermissions()
             if (token.isNotEmpty()) TrabajoDiario.programar(this@MainActivity)
             trabajoProgramado = TrabajoDiario.programado(this@MainActivity)
+            proximaEjecucion = TrabajoDiario.proximaReal(this@MainActivity)
             pintar()
             when {
                 // el PC solo quiere el fichero; ya lo sube el mismo
@@ -227,6 +235,22 @@ class MainActivity : ComponentActivity() {
                 "que una ventana más ancha corrige días viejos que se midieron a " +
                 "medias. Cuesta unos segundos más y nada de batería."))
         raiz.addView(selectorDias())
+
+        // --- hora de la ejecucion automatica ---
+        raiz.addView(rotulo("A qué hora se ejecuta sola"))
+        raiz.addView(parrafo("Android no garantiza el minuto exacto: si el móvil está " +
+                "en reposo profundo puede retrasarse un rato. Lo que sí garantiza es " +
+                "que se ejecute."))
+        raiz.addView(boton("Cambiar la hora · ${TrabajoDiario.hora(this)}") {
+            val h = TrabajoDiario.hora(this)
+            TimePickerDialog(this, { _, hh, mm ->
+                horaMin = hh * 60 + mm
+                TrabajoDiario.programar(this)
+                refrescarProgramado()
+                pintar()
+                decir("Se ejecutará sola a las %02d:%02d".format(hh, mm))
+            }, h.hour, h.minute, true).show()
+        })
 
         // --- estado ---
         raiz.addView(rotulo("Estado"))
@@ -436,14 +460,14 @@ class MainActivity : ComponentActivity() {
 
     private fun proxima(): String {
         if (token.isEmpty()) return "sin token, no está programada"
-        // preguntar a Android, no al reloj: un force-stop cancela el trabajo y
-        // la pantalla seguia prometiendo una ejecucion que no iba a ocurrir
+        // Se enseña la hora que devuelve WorkManager, NO la elegida en los
+        // ajustes: si las dos se separan (paso, ver TrabajoDiario.programar)
+        // lo que importa es cuando va a saltar de verdad.
         if (!trabajoProgramado) return "NO PROGRAMADA · abre la app para reactivarla"
-        val ahora = LocalDateTime.now()
-        var p = ahora.toLocalDate().atTime(TrabajoDiario.HORA)
-        if (!p.isAfter(ahora)) p = p.plusDays(1)
-        val d = Duration.between(ahora, p)
-        return "${TrabajoDiario.HORA} · dentro de ${d.toHours()}h ${d.toMinutes() % 60}m"
+        val p = proximaEjecucion ?: return "programada · calculando la hora…"
+        val d = Duration.between(LocalDateTime.now(), p)
+        if (d.isNegative) return "%02d:%02d · en cuanto Android la deje".format(p.hour, p.minute)
+        return "%02d:%02d · dentro de %dh %dm".format(p.hour, p.minute, d.toHours(), d.toMinutes() % 60)
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()

@@ -23,6 +23,7 @@ object Ajustes {
     private const val DOCS = "carpeta_docs"
     private const val RUTA = "ruta"
     private const val MEDIDAS = "medidas"
+    private const val HORA = "hora_min"
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(FICHERO, Context.MODE_PRIVATE)
 
@@ -47,6 +48,19 @@ object Ajustes {
     var Context.dias: Int
         get() = prefs(this).getInt(DIAS, 7)
         set(v) { prefs(this).edit().putInt(DIAS, v).apply() }
+
+    /**
+     * A que hora se ejecuta sola, en minutos desde medianoche.
+     *
+     * Se guarda en vez de estar fija en el codigo por una razon practica: la
+     * unica forma de comprobar que la ejecucion automatica SALTA de verdad es
+     * ponerla dentro de un rato y esperar. Con la hora fija eso obligaba a
+     * recompilar e instalar dos veces, y cada instalacion apaga el servicio de
+     * accesibilidad.
+     */
+    var Context.horaMin: Int
+        get() = prefs(this).getInt(HORA, 20 * 60 + 45)
+        set(v) { prefs(this).edit().putInt(HORA, v.coerceIn(0, 24 * 60 - 1)).apply() }
 
     /** Dia (ISO) para el que queda pendiente exportar FitDays, o "" si no. */
     var Context.fitdaysPendiente: String
