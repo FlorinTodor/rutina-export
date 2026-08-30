@@ -59,11 +59,20 @@ def fabricar(dias: int = 56, semilla: int = 7):
                 id=f"W{i}", title="Sesión de ejemplo", start_time=inicio_dt,
                 end_time=inicio_dt + timedelta(minutes=r.randint(50, 85)), sets=series))
 
+        # las fases tienen que sumar el total: la grafica de sueno las apila y
+        # sin ellas sale vacia aunque haya horas dormidas
+        total = max(4.2, r.gauss(7.0, 0.8))
+        prof = total * r.uniform(0.16, 0.24)
+        rem = total * r.uniform(0.18, 0.26)
         salud.append(DailyHealth(
             day=d,
             steps=max(1200, int(r.gauss(11000 if entrena else 7000, 2600))),
             total_kcal=round(r.gauss(2750 if entrena else 2180, 190), 1),
-            sleep_hours=round(max(4.2, r.gauss(7.0, 0.8)), 2),
+            sleep_hours=round(total, 2),
+            sleep_deep_h=round(prof, 2),
+            sleep_rem_h=round(rem, 2),
+            sleep_light_h=round(total - prof - rem, 2),
+            sleep_awake_h=round(r.uniform(0.2, 0.9), 2),
             resting_hr=r.randint(52, 62)))
 
         if d.weekday() == 6:
