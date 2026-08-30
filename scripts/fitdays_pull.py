@@ -160,10 +160,20 @@ def main() -> int:
             movil.borrar(remoto)
 
         sh("shell", "input", "keyevent", "KEYCODE_HOME")
+        subido = False
         if not args.no_push:
-            movil.publicar(["data/raw/body.jsonl"],
-                           f"fitdays: pesajes al {time.strftime('%Y-%m-%d %H:%M')}", ROOT)
-        if not args.no_trigger:
+            subido = movil.publicar(
+                ["data/raw/body.jsonl"],
+                f"fitdays: pesajes al {time.strftime('%Y-%m-%d %H:%M')}", ROOT)
+        # El push ya dispara el workflow por si mismo (sync.yml escucha los
+        # cambios en data/). Lanzarlo ADEMAS a mano encolaba una segunda
+        # ejecucion que hacia el mismo trabajo sobre un checkout viejo y
+        # terminaba con el push rechazado: el repositorio en rojo cada noche
+        # sin que nada estuviera mal. Solo se dispara cuando no hubo push,
+        # que es el caso que de verdad necesita el respaldo: sin datos nuevos
+        # del movil no hay push, pero Hevy si puede tener entrenos que
+        # sincronizar.
+        if not args.no_trigger and not subido:
             movil.disparar_nube()
         return 0
 

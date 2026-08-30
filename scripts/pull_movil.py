@@ -186,9 +186,19 @@ def main() -> int:
         log.error("Estan en data/raw/ para que los mires; nada se ha perdido.")
         return 1
 
+    subido = False
     if hechos and not args.no_push:
-        movil.publicar(FICHEROS, f"movil: datos al {time.strftime('%Y-%m-%d %H:%M')}", ROOT)
-    if hechos and not args.no_trigger:
+        subido = movil.publicar(
+            FICHEROS, f"movil: datos al {time.strftime('%Y-%m-%d %H:%M')}", ROOT)
+    # El push ya dispara el workflow por si mismo (sync.yml escucha los
+    # cambios en data/). Lanzarlo ADEMAS a mano encolaba una segunda
+    # ejecucion que hacia el mismo trabajo sobre un checkout viejo y
+    # terminaba con el push rechazado: el repositorio en rojo cada noche
+    # sin que nada estuviera mal. Solo se dispara cuando no hubo push,
+    # que es el caso que de verdad necesita el respaldo: sin datos nuevos
+    # del movil no hay push, pero Hevy si puede tener entrenos que
+    # sincronizar.
+    if hechos and not args.no_trigger and not subido:
         movil.disparar_nube()
 
     # el volcado de pantalla de adb_ui tampoco tiene por que quedarse
