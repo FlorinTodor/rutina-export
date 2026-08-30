@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -111,6 +113,25 @@ class TrabajoDiario(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
          * paso de verdad, y el usuario no tenia forma de saberlo hasta que no
          * subieron los datos.
          */
+        /**
+         * Encola AHORA el mismo trabajo que corre a las 20:45.
+         *
+         * El boton "Exportar y subir ahora" ejecuta el codigo de la pantalla,
+         * que no es el mismo: el de verdad corre en segundo plano, sin
+         * actividad viva, y es el unico que puede fallar por permisos de
+         * segundo plano o por el ahorro de bateria. Sin esto no habia forma de
+         * probarlo salvo esperar a las 20:45 y ver si aparecian los datos.
+         */
+        fun probarAhora(ctx: Context) {
+            WorkManager.getInstance(ctx).enqueueUniqueWork(
+                "$TRABAJO-prueba", ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<TrabajoDiario>()
+                    .setConstraints(Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED).build())
+                    .build())
+            Log.i(TAG, "Prueba del trabajo diario encolada")
+        }
+
         fun programado(ctx: Context): Boolean = try {
             // Se pregunta al JobScheduler de Android y no a WorkManager: su API
             // devuelve un ListenableFuture, que obligaria a arrastrar Guava

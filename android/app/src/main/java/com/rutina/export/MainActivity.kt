@@ -207,6 +207,15 @@ class MainActivity : ComponentActivity() {
                     "Apps que no se pondrán en reposo. Samsung detiene los trabajos " +
                     "programados de las apps que no están en esa lista."))
         }
+        raiz.addView(boton("Probar la ejecución automática") {
+            if (repo.isEmpty() || token.isEmpty()) decir("Configura antes GitHub, más abajo")
+            else {
+                TrabajoDiario.probarAhora(this)
+                decir("Encolado el MISMO trabajo que corre a las 20:45, en segundo " +
+                      "plano. Cierra la app y vuelve a abrirla en un minuto: si " +
+                      "«Última subida» ha cambiado, la automatización funciona.")
+            }
+        })
         raiz.addView(boton("Apuntar medidas de cinta") {
             startActivity(Intent(this, MedidasActivity::class.java))
         })
