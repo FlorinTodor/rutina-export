@@ -54,8 +54,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      # No hay dashboard publicado que probar: este repositorio no lleva datos
+      # de nadie. Se genera uno con datos inventados y se prueba ese, que
+      # ejercita lo mismo -- plantilla, payload y que la pagina corra sin
+      # errores en un navegador.
+      - run: PYTHONPATH=src python tests/dashboard_de_ejemplo.py /tmp/dashboard.html
       - run: npm install jsdom
-      - run: node tests/test_dashboard.mjs
+      - run: node tests/test_dashboard.mjs /tmp/dashboard.html
 
   android:
     name: App Android
