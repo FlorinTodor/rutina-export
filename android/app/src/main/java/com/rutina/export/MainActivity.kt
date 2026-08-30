@@ -201,6 +201,12 @@ class MainActivity : ComponentActivity() {
             if (repo.isEmpty() || token.isEmpty()) decir("Configura antes GitHub, más abajo")
             else exportar(subir = true)
         })
+        if (!TrabajoDiario.programado(this) && token.isNotEmpty()) {
+            raiz.addView(parrafo("Si esto se repite, quita la app del ahorro de " +
+                    "batería: Ajustes → Batería → Límites de uso en segundo plano → " +
+                    "Apps que no se pondrán en reposo. Samsung detiene los trabajos " +
+                    "programados de las apps que no están en esa lista."))
+        }
         raiz.addView(boton("Apuntar medidas de cinta") {
             startActivity(Intent(this, MedidasActivity::class.java))
         })
@@ -346,6 +352,9 @@ class MainActivity : ComponentActivity() {
 
     private fun proxima(): String {
         if (token.isEmpty()) return "sin token, no está programada"
+        // preguntar a Android, no al reloj: un force-stop cancela el trabajo y
+        // la pantalla seguia prometiendo una ejecucion que no iba a ocurrir
+        if (!TrabajoDiario.programado(this)) return "NO PROGRAMADA · abre la app para reactivarla"
         val ahora = LocalDateTime.now()
         var p = ahora.toLocalDate().atTime(TrabajoDiario.HORA)
         if (!p.isAfter(ahora)) p = p.plusDays(1)

@@ -1,6 +1,7 @@
 package com.rutina.export
 
 import android.app.KeyguardManager
+import android.app.job.JobScheduler
 import android.content.Context
 import android.util.Log
 import androidx.work.Constraints
@@ -99,6 +100,27 @@ class TrabajoDiario(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
                 TRABAJO, ExistingPeriodicWorkPolicy.UPDATE, trabajo)
             Log.i(TAG, "Programado para dentro de ${espera.toHours()}h ${espera.toMinutes() % 60}m")
+        }
+
+        /**
+         * Si el trabajo esta REALMENTE en la cola de Android.
+         *
+         * La pantalla calculaba la proxima ejecucion mirando el reloj, asi que
+         * anunciaba "20:45, dentro de 23h" aunque no hubiera nada programado.
+         * Un force-stop cancela los trabajos y deja la app en estado detenido:
+         * paso de verdad, y el usuario no tenia forma de saberlo hasta que no
+         * subieron los datos.
+         */
+        fun programado(ctx: Context): Boolean = try {
+            // Se pregunta al JobScheduler de Android y no a WorkManager: su API
+            // devuelve un ListenableFuture, que obligaria a arrastrar Guava
+            // entera por una comprobacion. WorkManager programa POR DEBAJO con
+            // el JobScheduler, asi que mirar ahi da la misma respuesta y es
+            // sincrono.
+            val js = ctx.getSystemService(JobScheduler::class.java)
+            js?.allPendingJobs?.isNotEmpty() == true
+        } catch (e: Exception) {
+            false
         }
 
         fun desbloqueado(ctx: Context): Boolean {
