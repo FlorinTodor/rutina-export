@@ -129,6 +129,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Relanzar la app desde el PC sin matarla antes.
+     *
+     * El puente del PC necesitaba que `onCreate` se volviera a ejecutar para
+     * regenerar el JSON, y lo conseguia con `am force-stop`. Eso tiene un
+     * efecto que no se ve: Android saca a una app parada a la fuerza de la
+     * lista de servicios de accesibilidad habilitados, y no la vuelve a meter.
+     * Es decir, cada ejecucion del temporizador apagaba la exportacion de
+     * FitDays. Con `singleTop` + `onNewIntent` la actividad se reutiliza, se
+     * lee el `dias` nuevo y se exporta igual, sin parar nada.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (!intent.hasExtra("dias")) return
+        dias = intent.getIntExtra("dias", dias).coerceIn(1, 400)
+        if (::raiz.isInitialized) pintar()
+        exportar(subir = false)
+    }
+
     override fun onResume() {
         super.onResume()
         // la accesibilidad se activa en Ajustes, fuera de la app

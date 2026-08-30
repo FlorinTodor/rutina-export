@@ -71,15 +71,18 @@ def hora_movil() -> datetime:
 
 
 def lanzar(dias: int) -> None:
-    """Arranca la app de cero.
+    """Arranca la app, o la despierta si ya estaba abierta.
 
-    El force-stop no es por limpieza: si la actividad sigue viva de la vez
-    anterior, `am start` la reutiliza sin volver a llamar a onCreate y el
-    fichero no se regenera. Empezar desde un estado conocido lo evita.
+    AQUI NO SE PARA LA APP A LA FUERZA, y no es un detalle de estilo. Android
+    saca a una app force-stopped de la lista de servicios de accesibilidad
+    habilitados y no la vuelve a meter: cada ejecucion del temporizador dejaba
+    el movil sin exportar FitDays hasta que se reactivaba a mano.
+
+    Lo que hacia falta del force-stop era que la actividad reprocesara el
+    intent en vez de reutilizar el de la vez anterior. Eso lo resuelve la app:
+    `launchMode="singleTop"` + `onNewIntent`.
     """
     log.info("Abriendo la app (%d dias)", dias)
-    movil.shell(f"am force-stop {PKG}")
-    time.sleep(1)
     movil.shell(f"am start -n {ACTIVIDAD} --ei dias {dias}")
 
 
