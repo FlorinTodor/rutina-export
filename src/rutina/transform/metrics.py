@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date
 
-from ..models import BodyMeasurement, DailyHealth, SetRecord, Workout, TapeMeasurement
+from ..models import BodyMeasurement, DailyHealth, Workout, TapeMeasurement
 
 
 @dataclass
@@ -160,19 +160,3 @@ def find_prs(
     return dict(prs)
 
 
-def rolling(rows: list[DayRow], attr: str, window: int = 7) -> dict[date, float]:
-    """Media movil sobre un atributo de DailyHealth (p. ej. pasos), para
-    suavizar la grafica. Ignora los dias sin dato."""
-    by_day = {}
-    for r in rows:
-        val = getattr(r.health, attr, None) if r.health else None
-        if val is not None:
-            by_day[r.day] = float(val)
-
-    out = {}
-    for r in rows:
-        window_days = [r.day - timedelta(days=i) for i in range(window)]
-        vals = [by_day[d] for d in window_days if d in by_day]
-        if vals:
-            out[r.day] = round(sum(vals) / len(vals), 1)
-    return out

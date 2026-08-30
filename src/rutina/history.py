@@ -19,7 +19,6 @@ from dataclasses import fields
 from datetime import date, datetime
 from pathlib import Path
 
-from .models import BodyMeasurement, DailyHealth
 
 log = logging.getLogger(__name__)
 

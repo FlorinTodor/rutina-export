@@ -115,10 +115,6 @@ class NotionClient:
         return self.request("PATCH", f"/pages/{page_id}",
                             json={"properties": properties})
 
-    def archive_page(self, page_id: str) -> dict:
-        return self.request("PATCH", f"/pages/{page_id}", json={"archived": True})
-
-
 class NotionError(RuntimeError):
     def __init__(self, status: int, body: str, method: str, path: str):
         self.status = status

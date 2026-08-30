@@ -11,13 +11,11 @@ Es idempotente: borra el panel anterior y lo reconstruye.
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from pathlib import Path
 
-from ..models import BodyMeasurement, DailyHealth
-from ..transform.metrics import DayRow, ExerciseStats, build_exercise_stats
+from ..transform.metrics import DayRow, ExerciseStats
 from .client import NotionClient, upload_file
-from .views import ViewBuilder, by_date, chart as chart_cfg
+from .views import ViewBuilder
 
 log = logging.getLogger(__name__)
 

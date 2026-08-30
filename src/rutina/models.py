@@ -88,10 +88,6 @@ class Workout:
         return to_local(self.start_time)
 
     @property
-    def local_end(self) -> datetime | None:
-        return to_local(self.end_time)
-
-    @property
     def day(self) -> date:
         """El dia en hora local, no en UTC."""
         return self.local_start.date()

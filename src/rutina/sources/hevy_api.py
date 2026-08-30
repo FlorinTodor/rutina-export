@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 
 import requests
 
@@ -71,31 +71,6 @@ class HevyAPI:
             for raw in items:
                 yield parse_workout(raw)
             if page >= int(data.get("page_count", 1)) or not items:
-                return
-            page += 1
-
-    def iter_events(self, since: datetime, page_size: int = MAX_PAGE_SIZE):
-        """Sincronizacion incremental: entrenos creados/editados/borrados desde `since`.
-
-        Devuelve tuplas (tipo, payload) con tipo en {"updated", "deleted"}.
-        """
-        page = 1
-        since_str = since.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        while True:
-            data = self._get(
-                "/workouts/events",
-                since=since_str,
-                page=page,
-                pageSize=min(page_size, MAX_PAGE_SIZE),
-            )
-            events = data.get("events", [])
-            for ev in events:
-                kind = ev.get("type")
-                if kind == "updated" and ev.get("workout"):
-                    yield "updated", parse_workout(ev["workout"])
-                elif kind == "deleted":
-                    yield "deleted", ev.get("id") or ev.get("workout_id")
-            if page >= int(data.get("page_count", 1)) or not events:
                 return
             page += 1
 
