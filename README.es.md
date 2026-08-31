@@ -159,7 +159,10 @@ root ninguna otra app puede leerlas.
 python tests/test_history.py        # el histórico sobrevive a una ventana corta
 python tests/test_sync_offline.py   # la sincronización no duplica en Notion
 python tests/test_movil.py          # el borrado en el móvil no se pasa
-npm install jsdom && node tests/test_dashboard.mjs
+# el del navegador necesita un dashboard: se genera uno con datos
+# inventados, porque este repositorio no lleva datos de nadie
+PYTHONPATH=src python tests/dashboard_de_ejemplo.py /tmp/dashboard.html
+npm install jsdom && node tests/test_dashboard.mjs /tmp/dashboard.html
 ```
 
 Se ejecutan en cada push junto con la compilación del APK.

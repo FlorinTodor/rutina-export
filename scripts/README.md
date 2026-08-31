@@ -239,6 +239,11 @@ journalctl --user -u rutina-movil -f        # ver qué hace
 
 `Persistent=true`: si el PC estaba apagado a las 20:45, se ejecuta al encenderlo.
 
+La unidad da por hecho que el repositorio esta en `~/rutina` y que el venv
+es `~/rutina/.venv`; si lo tienes en otro sitio, cambia `WorkingDirectory` y
+`ExecStart`. `FITDAYS_ADB_HOST` se puede borrar de la unidad: sin ella el
+movil se busca por mDNS y, si no aparece, se prueba por USB.
+
 ### Cuándo no funciona, y por qué da igual
 
 - **PC apagado** o **móvil fuera de casa**: se salta ese día. No importa: el

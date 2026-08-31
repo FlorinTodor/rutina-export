@@ -1,0 +1,22 @@
+[Unit]
+Description=Sacar del movil FitDays y Health Connect, e importarlos
+Documentation=file://%h/rutina/scripts/README.md
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Ajusta esta ruta a donde tengas clonado el repositorio.
+WorkingDirectory=%h/rutina
+# La IP del movil con la depuracion inalambrica activada. Se puede quitar:
+# sin ella se busca por mDNS y, si no aparece, se prueba por USB.
+Environment=FITDAYS_ADB_HOST=192.168.1.50:5555
+Environment=PYTHONPATH=src
+# El python del venv, no el del sistema: el export de FitDays es un Excel
+# antiguo y hace falta xlrd, que solo esta instalado aqui.
+ExecStart=%h/rutina/.venv/bin/python %h/rutina/scripts/pull_movil.py
+# el movil puede estar apagado o fuera de casa: no es un fallo del sistema
+SuccessExitStatus=0 1
+TimeoutStartSec=600
+
+[Install]
+WantedBy=default.target

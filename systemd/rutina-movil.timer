@@ -1,0 +1,11 @@
+[Unit]
+Description=Datos del movil a las 20:45, antes de que la nube sincronice a las 21:00
+
+[Timer]
+OnCalendar=*-*-* 20:45:00
+# si el PC estaba apagado a esa hora, se ejecuta al encenderlo
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

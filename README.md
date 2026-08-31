@@ -155,7 +155,10 @@ device no other app can read them.
 python tests/test_history.py        # history survives a short export window
 python tests/test_sync_offline.py   # syncing never duplicates in Notion
 python tests/test_movil.py          # the phone-deletion guard holds
-npm install jsdom && node tests/test_dashboard.mjs
+# the browser one needs a dashboard: generate one from made-up data,
+# since this repository carries nobody's data
+PYTHONPATH=src python tests/dashboard_de_ejemplo.py /tmp/dashboard.html
+npm install jsdom && node tests/test_dashboard.mjs /tmp/dashboard.html
 ```
 
 They run on every push, along with the APK build.
