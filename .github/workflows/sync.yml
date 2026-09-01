@@ -53,7 +53,19 @@ jobs:
         env:
           FORCE: ${{ inputs.force }}
           CRON: ${{ github.event.schedule }}
+          # Solo para saber SI existe; no se imprime nunca.
+          HAY_CLAVE: ${{ secrets.HEVY_API_KEY }}${{ secrets.NOTION_TOKEN }}
         run: |
+          # Un repositorio recien clonado no tiene secretos, y sin ellos no hay
+          # nada que sincronizar: antes intentaba y moria con un traceback, y
+          # dejaba el repositorio con la CI en rojo sin que estuviera roto.
+          if [ -z "$HAY_CLAVE" ]; then
+            echo "run=no" >> "$GITHUB_OUTPUT"
+            echo "Sin secretos de Hevy ni de Notion: no hay nada que sincronizar."
+            echo "Configuralos con scripts/configurar.py y esto se enciende solo."
+            exit 0
+          fi
+
           # Se decide por QUÉ cron disparó, no por la hora a la que llegó.
           # GitHub se retrasa con frecuencia, y mirar el reloj hacía que una
           # ejecución tardía cayera fuera de la ventana y se descartara.
