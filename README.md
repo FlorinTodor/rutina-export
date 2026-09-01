@@ -35,7 +35,7 @@ and never published, there is no review to pass.
 | **Health Connect** | steps, distance, calories, sleep stages, heart rate, HRV, SpO2 | own app, in the background |
 | **Samsung Health** | it's what feeds the above from your watch | via Health Connect |
 | **FitDays** | all **15** scale metrics: visceral and subcutaneous fat, skeletal muscle, protein, body age… | its export, by driving its UI |
-| **Hevy** | workouts, sets, reps, weights, RPE, PRs, estimated 1RM | official API |
+| **Hevy** | workouts, sets, reps, weights, RPE, PRs, estimated 1RM and each session's load | official API |
 | **tape measure** | chest, abdomen, waist, hips, arms, thighs, calves | typed by hand, in the app |
 | **Notion** | five related databases: Days, Workouts, Sets, Exercises, Measurements | official API |
 
@@ -137,6 +137,13 @@ Documented where they happen, but these deserve a warning:
   name into each workout, so changing the app's language splits your history.
 - **Hevy's calories are already in Health Connect**, because Hevy writes there.
   Adding them separately would double-count them.
+- **The estimated 1RM goes quiet above 12 reps**, because that is where Epley
+  stops being reliable. That must not take the whole session down with it: the
+  dashboard still shows the kilos moved, the best set and the working sets of
+  that day, and the only thing left blank is the 1RM.
+- **What isn't lifted in kilos isn't drawn in kilos.** Push-ups are counted in
+  reps and jump rope in minutes; drawing them a volume of zero would be showing
+  a number that doesn't exist.
 - **`uiautomator dump` freezes the animations of whatever app you're looking
   at**, and it doesn't recover on its own. Worth knowing if you automate UIs.
 

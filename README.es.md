@@ -35,7 +35,7 @@ ADB y no se publica, no hay revisión que pasar.
 | **Health Connect** | pasos, distancia, calorías, sueño con fases, pulso, HRV, SpO2 | app propia, en segundo plano |
 | **Samsung Health** | es quien alimenta lo anterior desde el reloj | vía Health Connect |
 | **FitDays** | las **15** métricas de la báscula: grasa visceral y subcutánea, músculo esquelético, proteína, edad corporal… | su export, manejando su interfaz |
-| **Hevy** | entrenos, series, repeticiones, pesos, RPE, récords, 1RM estimado | su API oficial |
+| **Hevy** | entrenos, series, repeticiones, pesos, RPE, récords, 1RM estimado y la carga de cada sesión | su API oficial |
 | **cinta métrica** | pecho, abdomen, cintura, cadera, brazos, muslos, gemelos | a mano, en la app |
 | **Notion** | cinco bases relacionadas: Días, Entrenos, Series, Ejercicios, Medidas | API oficial |
 
@@ -141,6 +141,13 @@ Están documentados donde ocurren, pero estos merecen aviso:
   nombre traducido de cada entreno, y cambiar el idioma parte el historial.
 - **Las calorías de Hevy ya están en Health Connect**, porque Hevy escribe ahí.
   Sumarlas aparte sería contarlas dos veces.
+- **El 1RM estimado se calla por encima de 12 repeticiones**, porque ahí la
+  fórmula de Epley deja de ser fiable. Eso no puede llevarse por delante la
+  sesión entera: el panel enseña igual los kilos movidos, la mejor serie y las
+  series de ese día, y lo único que queda vacío es el 1RM.
+- **Lo que no se levanta en kilos no se dibuja en kilos.** Las flexiones se
+  cuentan en repeticiones y la comba en minutos; pintarles un volumen a cero
+  sería enseñar un dato que no existe.
 - **`uiautomator dump` congela las animaciones de la app que estés mirando**, y
   no se recupera sola. Si automatizas interfaces, tenlo en cuenta.
 

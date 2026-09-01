@@ -30,7 +30,13 @@ EJERCICIOS = [
     ("EJ02", "Lat Pulldown (Cable)", "lats", "machine"),
     ("EJ03", "Squat (Barbell)", "quadriceps", "barbell"),
     ("EJ04", "Lateral Raise (Dumbbell)", "shoulders", "dumbbell"),
+    # Dos que no se miden en kilos, para que la demo ensene lo que hace el
+    # panel con ellos: las flexiones se cuentan en repeticiones y la comba en
+    # minutos. Con solo barras y maquinas esas ramas no se verian nunca.
+    ("EJ05", "Push Up", "chest", "none"),
+    ("EJ06", "Jump Rope", "cardio", "none"),
 ]
+PESADOS = EJERCICIOS[:4]
 
 
 def fabricar(dias: int = 56, semilla: int = 7):
@@ -45,15 +51,37 @@ def fabricar(dias: int = 56, semilla: int = 7):
 
         if entrena:
             series = []
-            for idx, (eid, titulo, musculo, _) in enumerate(EJERCICIOS):
+            for idx, (eid, titulo, musculo, _) in enumerate(PESADOS):
                 base = 60 + idx * 12 + i * 0.18
+                # una sesion de cada cinco se va a repeticiones altas: por
+                # encima de 12 el 1RM estimado no se puede calcular, y el panel
+                # tiene que seguir ensenando la carga del dia sin el
+                altas = idx == 1 and r.random() < 0.2
                 for s in range(3):
                     series.append(SetRecord(
                         workout_id=f"W{i}", exercise_index=idx, exercise_title=titulo,
                         exercise_template_id=eid, set_index=s, set_type="normal",
                         weight_kg=round(base + r.uniform(-4, 4), 1),
-                        reps=r.randint(6, 12), distance_meters=None,
+                        reps=r.randint(14, 18) if altas else r.randint(6, 12),
+                        distance_meters=None,
                         duration_seconds=None, rpe=r.choice([7.0, 8.0, 8.5, None])))
+
+            # peso corporal: hay repeticiones y no hay kilos
+            if r.random() < 0.55:
+                for s in range(3):
+                    series.append(SetRecord(
+                        workout_id=f"W{i}", exercise_index=4, exercise_title="Push Up",
+                        exercise_template_id="EJ05", set_index=s, set_type="normal",
+                        weight_kg=None, reps=r.randint(10, 22), distance_meters=None,
+                        duration_seconds=None, rpe=None))
+
+            # por tiempo: ni kilos ni repeticiones, solo minutos
+            if r.random() < 0.35:
+                series.append(SetRecord(
+                    workout_id=f"W{i}", exercise_index=5, exercise_title="Jump Rope",
+                    exercise_template_id="EJ06", set_index=0, set_type="normal",
+                    weight_kg=None, reps=None, distance_meters=None,
+                    duration_seconds=60 * r.randint(6, 15), rpe=None))
             inicio_dt = datetime.combine(d, datetime.min.time()).replace(hour=18)
             workouts.append(Workout(
                 id=f"W{i}", title="Sesión de ejemplo", start_time=inicio_dt,

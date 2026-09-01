@@ -80,7 +80,7 @@ video.thumb,video.dgif{object-fit:cover;background:var(--bg-2)}
   box-shadow:var(--shadow);padding:18px 20px}
 .card h3{font-family:Archivo,sans-serif;font-weight:700;font-size:16px;margin:0 0 2px;
   letter-spacing:-.015em}
-.card .note{font-size:11.5px;color:var(--ink-3);margin:0 0 14px}
+.note{font-size:11.5px;color:var(--ink-3);margin:0 0 14px}
 .legend{display:flex;gap:14px;margin-top:10px;font-size:11px;color:var(--ink-2);flex-wrap:wrap}
 .legend i{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px;
   vertical-align:-1px}
@@ -91,6 +91,9 @@ video.thumb,video.dgif{object-fit:cover;background:var(--bg-2)}
 .chg{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
   display:block;margin-top:2px}
 .minigrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}
+/* las de la sesion llevan barras y cifras encima: con 270px se pisan */
+.minigrid.ancha{grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:20px 22px}
+.minigrid.ancha .note{margin-bottom:6px}
 .duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
 .cmp{width:100%;border-collapse:collapse;font-size:13px}
 .cmp th{text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
@@ -121,7 +124,6 @@ video.thumb,video.dgif{object-fit:cover;background:var(--bg-2)}
 .aviso .ic{font-size:15px;line-height:1.2}
 .mini h4{font-family:Archivo,sans-serif;font-size:12.5px;font-weight:600;margin:0 0 4px;
   color:var(--ink-2)}
-
 /* ---------- raíl ---------- */
 .rail{overflow:hidden;display:flex;flex-direction:column;max-height:78vh}
 .railtop{padding:12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:9px}
@@ -210,6 +212,19 @@ td:first-child{font-family:"IBM Plex Sans",sans-serif}
 tr:last-child td{border-bottom:0}
 .isPr{color:var(--brass);font-weight:600}
 .empty{color:var(--ink-3);padding:30px 0;text-align:center}
+.sep{margin:22px 0 14px;border:0;border-top:1px solid var(--line)}
+.h4{font-family:Archivo,sans-serif;font-weight:700;font-size:14px;margin:0 0 2px;
+  letter-spacing:-.015em}
+.glos{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.glos summary{cursor:pointer;font-size:12px;color:var(--ink-2);list-style:none}
+.glos summary::-webkit-details-marker{display:none}
+.glos summary::before{content:"▸ ";color:var(--ink-3)}
+.glos[open] summary::before{content:"▾ "}
+.glos dl{margin:12px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.55}
+.glos dt{font-weight:600;color:var(--ink);margin-top:11px}
+.glos dd{margin:2px 0 0}
+.glos code{font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  background:var(--surface-2);padding:1px 5px;border-radius:4px}
 /* ---------- visor ampliado ---------- */
 .mini,.card.zoomable{position:relative}
 .zoom{
@@ -305,6 +320,9 @@ const MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","
 const short = iso => { const d = new Date(iso+"T00:00"); return d.getDate()+" "+MES[d.getMonth()]; };
 const longd = iso => { const d = new Date(iso+"T00:00"); return d.getDate()+" "+MES[d.getMonth()]+" "+d.getFullYear(); };
 const daysAgo = iso => Math.round((Date.now()-new Date(iso+"T00:00"))/864e5);
+// "0×12" no es una serie: en los ejercicios de peso corporal no hay kilos que
+// enseñar, y en los de tiempo no hay ni repeticiones.
+const serie = (w, r) => w ? `${w}×${r}` : r ? `${r} reps` : "—";
 
 let state = { sel: null, q: "", sort: "recent", muscle: null };
 
@@ -397,7 +415,9 @@ let EXAXIS = null;   // ejes de la última gráfica de ejercicio, para el hover
 
 function chart(e) {
   const pts = e.pts.filter(p => p.e);
-  if (pts.length < 2) return `<p class="empty">Solo una sesión registrada: aún no hay curva.</p>`;
+  if (pts.length < 2) return `<p class="empty">${
+    e.pts.length < 2 ? "Solo una sesión registrada: aún no hay curva."
+    : "Sin 1RM estimado: hace falta peso en la barra y series de 12 repeticiones o menos."}</p>`;
   const W = 900, H = 300, P = { t: 16, r: 18, b: 30, l: 46 };
   const xs = pts.map(p => new Date(p.d + "T00:00").getTime());
   const ys = pts.map(p => p.e);
@@ -477,12 +497,187 @@ function wireChart() {
   });
 }
 
+/* ---------- las gráficas de la sesión ----------
+
+   La curva de 1RM cuenta lo fuerte que estás, pero no lo que hiciste ese día:
+   dos sesiones con el mismo 1RM estimado pueden ser dos series o cinco. Aquí
+   va la carga: cuánto moviste, con qué serie, cuántas series y cuándo cayó
+   cada récord.
+
+   Qué se dibuja depende del ejercicio. Los de peso corporal (flexiones) no
+   tienen volumen que enseñar y sí repeticiones; los de tiempo (comba, cinta)
+   no tienen ninguna de las dos. Pintarles una gráfica a cero sería enseñar un
+   número que no existe.                                                     */
+
+function graficasSesion(e) {
+  const pts = e.pts;
+  const hayPeso = pts.some(p => p.w > 0);
+  const conRm = pts.filter(p => p.e);
+  const sinRm = pts.length - conRm.length;
+  const tarjetas = [];
+  // en que se mide la carga de este ejercicio, para no prometer repeticiones
+  // en uno que solo tiene minutos
+  let carga = null;
+
+  // 1. la carga del día, en la unidad que tenga sentido para este ejercicio
+  if (pts.some(p => p.v > 0)) {
+    carga = "kg";
+    tarjetas.push({
+      id: "gs-carga", titulo: "Carga de la sesión",
+      nota: "Kilos movidos ese día: peso × repeticiones de todas las series",
+      stats: resumen(pts, "v", 0, "kg"),
+      visor: "Peso × repeticiones sumado en todas las series efectivas",
+      pinta: (c, h) => barChart(c, pts, "v", {
+        h, unit: "kg", label: "Carga de la sesión", cima: p => fmtn(p.v),
+        marca: p => e.prDate && p.d === e.prDate,
+        tip: p => `<b>${fmt(p.v)} kg</b><span class="m">${longd(p.d)} · ${p.s} series ·
+          ${p.n} repeticiones · mejor serie ${serie(p.w, p.r)}</span>`,
+      }),
+    });
+  } else if (pts.some(p => p.n > 0)) {
+    carga = "reps";
+    tarjetas.push({
+      id: "gs-carga", titulo: "Repeticiones de la sesión",
+      nota: "Este ejercicio no lleva peso, así que la carga se cuenta en repeticiones",
+      stats: resumen(pts, "n", 0, "reps"),
+      visor: "Repeticiones efectivas del día, sin contar calentamientos",
+      pinta: (c, h) => barChart(c, pts, "n", {
+        h, unit: "reps", label: "Repeticiones", color: PAL.up, cima: p => p.n,
+        tip: p => `<b>${p.n} repeticiones</b><span class="m">${longd(p.d)} ·
+          ${p.s} series · mejor ${serie(p.w, p.r)}</span>`,
+      }),
+    });
+  } else if (pts.some(p => p.t > 0)) {
+    carga = "min";
+    tarjetas.push({
+      id: "gs-carga", titulo: "Minutos por sesión",
+      nota: "Este ejercicio se registra por tiempo: ni kilos ni repeticiones",
+      stats: resumen(pts, "t", 0, "min"),
+      visor: "Minutos registrados en Hevy",
+      pinta: (c, h) => barChart(c, pts, "t", {
+        h, unit: "min", label: "Minutos", color: PAL.up, cima: p => p.t,
+        tip: p => `<b>${p.t} min</b><span class="m">${longd(p.d)} · ${p.s} series</span>`,
+      }),
+    });
+  }
+
+  // 2. con qué carga: la serie más pesada de cada día, con sus repeticiones
+  if (hayPeso) {
+    const conPeso = pts.filter(p => p.w > 0);
+    tarjetas.push({
+      id: "gs-peso", titulo: "Peso de la mejor serie",
+      nota: "El disco que moviste, con las repeticiones encima de la barra",
+      stats: resumen(conPeso, "w", 1, "kg"),
+      visor: "La mejor serie de cada sesión: peso, y encima las repeticiones",
+      pinta: (c, h) => barChart(c, conPeso, "w", {
+        h, unit: "kg", label: "Peso de la mejor serie", color: PAL.steel,
+        cima: p => "×" + p.r, marca: p => e.prWDate && p.d === e.prWDate,
+        tip: p => `<b>${serie(p.w, p.r)}</b><span class="m">${longd(p.d)} ·
+          la mejor serie de esa sesión${e.prWDate === p.d ? " · tu serie más pesada" : ""}</span>`,
+      }),
+    });
+  }
+
+  // 3. cuánto trabajo: las series son la unidad con la que se programa
+  tarjetas.push({
+    id: "gs-series", titulo: "Series por sesión",
+    nota: "Series efectivas, sin contar calentamientos. Es lo que cuenta el reparto por músculo",
+    stats: resumen(pts, "s", 0, "series"),
+    visor: "Series efectivas por sesión",
+    pinta: (c, h) => barChart(c, pts, "s", {
+      h, unit: "series", label: "Series", color: PAL.brass, cima: p => p.s,
+      tip: p => `<b>${p.s} series</b><span class="m">${longd(p.d)} ·
+        ${p.n} repeticiones${p.v ? ` · ${fmt(p.v)} kg` : ""}</span>`,
+    }),
+  });
+
+  // 4. los récords: lo del día contra lo mejor que llevabas
+  if (conRm.length >= 2) {
+    tarjetas.push({
+      id: "gs-pr", titulo: "Récords",
+      nota: "Lo de cada día contra el mejor 1RM que llevabas hasta esa fecha",
+      stats: resumen(conRm, "e", 1, "kg"),
+      visor: "La línea de latón solo sube: cuando se aplana, el récord lleva tiempo sin caer",
+      pinta: (c, h) => escalera(c, pts, { h }),
+    });
+  }
+
+  const html = `
+    <hr class="sep">
+    <p class="h4">La carga de cada día</p>
+    <p class="note">La curva de arriba dice lo fuerte que estás; estas dicen lo
+      que hiciste. Dos sesiones con el mismo 1RM estimado pueden ser dos series
+      o cinco.${!sinRm ? "" : !hayPeso
+        ? ` Este ejercicio no lleva peso, así que no hay 1RM que estimar: la
+          carga se cuenta en ${carga === "min" ? "minutos" : "repeticiones"}.`
+        : ` En ${sinRm} de las ${pts.length} sesiones no hay 1RM estimado porque
+          ninguna serie bajó de 12 repeticiones: la carga sí está, el 1RM no.`}</p>
+    <div class="minigrid ancha">
+      ${tarjetas.map(c => `<div class="mini">
+        <h4>${c.titulo}</h4><p class="note">${c.nota}</p>
+        <div id="${c.id}"></div></div>`).join("")}
+    </div>
+    ${glosario(e)}`;
+
+  const pintar = () => tarjetas.forEach(c => {
+    const box = $("#" + c.id);
+    if (!box) return;
+    c.pinta(box, 200);
+    ampliable(box.closest(".mini"), {
+      titulo: `${c.titulo} · ${e.name}`, nota: c.visor, stats: c.stats,
+      dibuja: caja => c.pinta(caja, 430),
+    });
+  });
+
+  return { html, pintar };
+}
+
+/* El glosario que contesta a "¿y la diferencia entre PR y RM?", con los
+   números de este ejercicio dentro para que no sea teoría. */
+function glosario(e) {
+  const pesada = e.prW ? serie(e.prW, e.prR) : null;
+  return `<details class="glos">
+    <summary>Qué es un PR, qué es el 1RM y qué es el volumen</summary>
+    <dl>
+      <dt>Serie</dt>
+      <dd><code>70×10</code> son 70 kg levantados 10 veces seguidas. Los
+        calentamientos no entran en ningún número de esta página.</dd>
+
+      <dt>Volumen — la carga del día</dt>
+      <dd>Peso × repeticiones, sumado en todas las series. Es cuánto has movido
+        en total, y sube cuando haces más trabajo aunque no toques más peso.</dd>
+
+      <dt>1RM</dt>
+      <dd>El peso máximo que podrías levantar <b>una sola vez</b>. Aquí nunca se
+        mide: se <b>estima</b> con la fórmula de Epley
+        (<code>peso × (1 + reps/30)</code>) a partir de tu mejor serie real. Por
+        eso pone «1RM est.». Por encima de 12 repeticiones la fórmula deja de ser
+        fiable y la casilla se queda vacía.</dd>
+
+      <dt>PR — récord personal</dt>
+      <dd>Lo mejor que has hecho <b>de verdad</b>, y hay más de uno. El de peso es
+        la serie más pesada${pesada ? `: la tuya es <b>${pesada}</b>${
+          e.prWDate ? `, del ${longd(e.prWDate)}` : ""}` : ""}. El de fuerza es el
+        mayor 1RM estimado${e.prE ? `: <b>${e.prE} kg</b>${
+          e.prDate ? `, del ${longd(e.prDate)}` : ""}` : ""}.${
+        e.prWDate && e.prDate && e.prWDate !== e.prDate
+          ? " No cayeron el mismo día, y por eso van por separado." : ""}</dd>
+
+      <dt>La diferencia, en una línea</dt>
+      <dd>El PR es un hecho; el 1RM es una cuenta hecha a partir de ese hecho. Y
+        un PR puede caer sin tocar más peso: <code>70×12</code> es más que
+        <code>70×10</code> con el mismo disco.</dd>
+    </dl>
+  </details>`;
+}
+
 /* ---------- panel de detalle ---------- */
 function detail(e) {
   if (!e) return;
   const t = e.trend, cls = t > 1 ? "up" : t < -1 ? "down" : "flat";
   const rows = [...e.pts].reverse().slice(0, 14);
   const prE = e.prE;
+  const gs = graficasSesion(e);
   $("#detail").innerHTML = `
     <div class="dhead">
       ${e.anim ? `<video class="dgif" src="${e.anim}" autoplay loop muted
@@ -500,22 +695,36 @@ function detail(e) {
     </div>
     <div class="tiles">
       <div class="tile hl"><span class="v">${e.prE ?? "—"} kg</span><span class="l">Récord 1RM est.</span></div>
-      <div class="tile"><span class="v">${e.prW ?? "—"}×${e.prR ?? "—"}</span><span class="l">Mejor serie</span></div>
+      <div class="tile"><span class="v">${e.prW != null ? serie(e.prW, e.prR) : "—"}</span>
+        <span class="l">Serie más pesada</span></div>
       <div class="tile"><span class="v ${cls}">${t > 0 ? "+" : ""}${t} kg</span><span class="l">Tendencia</span></div>
       <div class="tile"><span class="v">${e.sessions}</span><span class="l">Sesiones</span></div>
       <div class="tile"><span class="v">${(e.vol/1000).toFixed(1)} t</span><span class="l">Volumen total</span></div>
       <div class="tile"><span class="v">${daysAgo(e.last)} d</span><span class="l">Desde la última</span></div>
+      ${e.prDate ? `<div class="tile"><span class="v ${daysAgo(e.prDate) > 60 ? "down" : ""}">${
+        daysAgo(e.prDate)} d</span><span class="l">Desde el récord</span></div>` : ""}
+      ${e.next ? `<div class="tile hl"><span class="v">${e.next.w}<em>kg</em> × ${e.next.r}</span>
+        <span class="l">Siguiente objetivo</span></div>` : ""}
     </div>
+    ${e.next ? `<p class="note" style="margin:-6px 0 16px">Doble progresión: la
+      última vez hiciste <b>${e.next.de}</b>, así que toca ${e.next.sube === "reps"
+      ? `la misma carga y <b>una repetición más</b>`
+      : `subir a <b>${e.next.w} kg</b> y volver a 8 repeticiones`}. Es una
+      orientación calculada, no lo que diga tu sensación del día.</p>` : ""}
     ${chart(e)}
+    ${gs.html}
     <div class="tblwrap"><table>
-      <thead><tr><th>Fecha</th><th>1RM est.</th><th>Mejor serie</th><th>Series</th><th>Volumen</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>1RM est.</th><th>Mejor serie</th><th>Series</th>
+        <th>Reps</th><th>Volumen</th></tr></thead>
       <tbody>${rows.map(p => `<tr>
         <td>${longd(p.d)}</td>
         <td class="${p.e === prE ? "isPr" : ""}">${p.e || "—"}</td>
-        <td>${p.w}×${p.r}</td><td>${p.s}</td><td>${fmt(p.v)}</td></tr>`).join("")}
+        <td>${serie(p.w, p.r)}</td><td>${p.s}</td><td>${p.n || "—"}</td>
+        <td>${p.v ? fmt(p.v) : "—"}</td></tr>`).join("")}
       </tbody></table></div>
     ${e.aliases.length ? `<p class="sub" style="margin-top:12px">También registrado como:
       ${e.aliases.join(" · ")}</p>` : ""}`;
+  gs.pintar();
   wireChart();
   const cb = $("#detail .chartbox");
   if (cb) {
@@ -545,7 +754,9 @@ function axes(W, H, P, lo, hi, ticks = 4) {
   }
   return g;
 }
-const fmtn = v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(1).replace(".0", "") + "k"
+// el cero de los ejes que arrancan en cero salia como "0.0"
+const fmtn = v => v === 0 ? "0"
+                : Math.abs(v) >= 1000 ? (v / 1000).toFixed(1).replace(".0", "") + "k"
                 : Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1);
 
 function xLabels(pts, X, H, n = 6) {
@@ -615,6 +826,43 @@ function lineChart(box, pts, key, opts = {}) {
      <span class="m">${longd(has[i].d)}</span>`);
 }
 
+/* dos series en la misma caja: pulso máximo y medio del día.
+   No es un stackChart (no se suman) ni dos lineChart (compararlas exige el
+   mismo eje), asi que es su propia función, cortita. */
+function dobleLinea(box, pts, keys, colors, names, unidad, alto) {
+  const has = pts.filter(p => keys.some(k => p[k] != null));
+  if (has.length < 2) { box.innerHTML = `<p class="blank">Aún no hay datos suficientes.</p>`; return; }
+  const W = 900, H = alto || 240, P = { t: 14, r: 16, b: 28, l: 46 };
+  const todos = has.flatMap(p => keys.map(k => p[k]).filter(v => v != null));
+  let lo = Math.min(...todos), hi = Math.max(...todos);
+  const pad = (hi - lo || hi * .1) * .16; lo -= pad; hi += pad;
+  const X = i => P.l + (i / (has.length - 1 || 1)) * (W - P.l - P.r);
+  const Y = v => P.t + (1 - (v - lo) / (hi - lo || 1)) * (H - P.t - P.b);
+
+  // un hueco parte la línea en vez de inventar una recta entre dos días
+  const trazo = k => has.map((p, i) => p[k] == null ? ""
+    : `${i && has[i - 1][k] != null ? "L" : "M"}${X(i).toFixed(1)},${Y(p[k]).toFixed(1)}`).join("");
+
+  box.innerHTML = `<div class="chartbox">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${names.join(" y ")}">
+      ${axes(W, H, P, lo, hi)}
+      ${keys.map((k, j) => `<path d="${trazo(k)}" fill="none" stroke="${colors[j]}"
+        stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`).join("")}
+      ${xLabels(has, X, H)}
+      <line class="cross" y1="${P.t}" y2="${H - P.b}" stroke="var(--ink-3)"
+        stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+      <rect class="hit" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}"
+        height="${H - P.t - P.b}" fill="transparent"/>
+    </svg><div class="tip"></div></div>
+    <div class="legend">${names.map((n, j) =>
+      `<span><i style="background:${colors[j]}"></i>${n}</span>`).join("")}</div>`;
+
+  hover(box, has, i => X(i), i => Y(has[i][keys[0]] ?? has[i][keys[1]]), i =>
+    `<b>${keys.map((k, j) => has[i][k] == null ? "" :
+        `${names[j]} ${has[i][k]} ${unidad}`).filter(Boolean).join(" · ")}</b>
+     <span class="m">${longd(has[i].d)}</span>`);
+}
+
 /* barras apiladas: usado para las fases del sueño */
 function stackChart(box, pts, keys, colors, names, opts = {}) {
   const has = pts.filter(p => keys.some(k => p[k] != null));
@@ -653,6 +901,118 @@ function stackChart(box, pts, keys, colors, names, opts = {}) {
   hover(box, has, i => X(i), i => Y(tot[i]), i =>
     `<b>${tot[i].toFixed(1)} h</b><span class="m">${longd(has[i].d)} · ` +
     keys.map((k, j) => `${names[j]} ${(has[i][k] || 0).toFixed(1)}`).join(" · ") + `</span>`);
+}
+
+/* barras de una sola serie: la carga de la sesión, las series, los minutos.
+   stackChart ya dibuja barras, pero apila y habla en horas; esto es una sola
+   pieza por día, con el tooltip que le pases. */
+function barChart(box, pts, key, opts = {}) {
+  const has = pts.filter(p => p[key] != null);
+  if (!has.length) { box.innerHTML = `<p class="blank">${
+    opts.vacio || "Aún no hay datos."}</p>`; return; }
+  const W = 900, H = opts.h || 200, P = { t: 20, r: 16, b: 28, l: 46 };
+  const hi = (Math.max(...has.map(p => p[key])) || 1) * 1.18;
+  const bw = Math.min(30, (W - P.l - P.r) / has.length * .72);
+  const X = i => P.l + (i + .5) / has.length * (W - P.l - P.r);
+  const Y = v => P.t + (1 - v / hi) * (H - P.t - P.b);
+  const color = opts.color || PAL.steel;
+  // el día del récord va en latón, igual que el punto de la gráfica de arriba
+  const marca = opts.marca || (() => false);
+
+  const bars = has.map((p, i) => {
+    const y = Y(p[key] || 0), alta = marca(p, i);
+    return `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${y.toFixed(1)}"
+      width="${bw.toFixed(1)}" height="${Math.max(1, H - P.b - y).toFixed(1)}"
+      rx="2" fill="${alta ? PAL.brass : color}" fill-opacity="${alta ? 1 : .82}"/>`;
+  }).join("");
+  // La cifra encima de cada barra solo cabe si la barra es ancha Y hay pocas.
+  // El viewBox es el mismo en la tarjeta y en el visor, asi que "pocas" solo
+  // vale para la tarjeta: ampliada, el mismo dibujo sale al doble de tamano.
+  const grande = (opts.h || 200) >= 300;
+  const cimas = opts.cima && bw >= 15 && (grande || has.length <= 14)
+    ? has.map((p, i) =>
+    `<text x="${X(i).toFixed(1)}" y="${(Y(p[key]) - 7).toFixed(1)}" text-anchor="middle"
+      font-size="10" fill="var(--ink-3)"
+      font-family="IBM Plex Mono,monospace">${opts.cima(p, i)}</text>`).join("") : "";
+
+  box.innerHTML = `<div class="chartbox">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.label || key}">
+      ${axes(W, H, P, 0, hi)}${bars}${cimas}${xLabels(has, X, H)}
+      <rect class="hit" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}"
+        height="${H - P.t - P.b}" fill="transparent"/>
+    </svg><div class="tip"></div></div>
+    ${opts.leyenda ? `<div class="legend">${opts.leyenda}</div>` : ""}`;
+
+  hover(box, has, i => X(i), i => Y(has[i][key]), i => opts.tip ? opts.tip(has[i], i)
+    : `<b>${fmt(has[i][key])}${opts.unit ? " " + opts.unit : ""}</b>
+       <span class="m">${longd(has[i].d)}</span>`);
+}
+
+/* la escalera de récords.
+
+   Debajo, el 1RM estimado de cada sesión, que sube y baja según el día que
+   tuvieras. Encima, el mejor que llevabas hasta esa fecha: esa línea SOLO
+   sube, y cuando se queda plana muchas sesiones es que el ejercicio está
+   estancado. Es la diferencia entre "lo de hoy" y "tu récord" dibujada. */
+function escalera(box, pts, opts = {}) {
+  const has = pts.filter(p => p.e);
+  if (has.length < 2) {
+    box.innerHTML = `<p class="blank">Hace falta más de una sesión con 1RM estimado.</p>`;
+    return;
+  }
+  const W = 900, H = opts.h || 200, P = { t: 16, r: 16, b: 28, l: 46 };
+  let tope = 0;
+  const rec = has.map(p => (tope = Math.max(tope, p.e)));
+  // la primera sesion es la linea de salida, no un record: es el mismo
+  // criterio que usa find_prs() para no cantar un PR el dia que estrenas
+  // un ejercicio
+  const nuevo = has.map((p, i) => i > 0 && rec[i] > rec[i - 1]);
+  let lo = Math.min(...has.map(p => p.e)), hi = Math.max(...rec);
+  const pad = (hi - lo || hi * .1) * .18; lo -= pad; hi += pad;
+  const X = i => P.l + (i / (has.length - 1 || 1)) * (W - P.l - P.r);
+  const Y = v => P.t + (1 - (v - lo) / (hi - lo || 1)) * (H - P.t - P.b);
+
+  // escalón: el récord se mantiene plano hasta el día en que cae otro
+  let paso = `M${X(0).toFixed(1)},${Y(rec[0]).toFixed(1)}`;
+  for (let i = 1; i < has.length; i++) {
+    paso += `L${X(i).toFixed(1)},${Y(rec[i - 1]).toFixed(1)}` +
+            `L${X(i).toFixed(1)},${Y(rec[i]).toFixed(1)}`;
+  }
+  const linea = has.map((p, i) =>
+    `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(p.e).toFixed(1)}`).join("");
+  const dots = has.map((p, i) => !nuevo[i] ? "" :
+    `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.e).toFixed(1)}" r="3.8"
+      fill="var(--brass)" stroke="var(--surface)" stroke-width="2"/>`).join("");
+
+  box.innerHTML = `<div class="chartbox">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Récord acumulado">
+      ${axes(W, H, P, lo, hi)}
+      <path d="${linea}" fill="none" stroke="var(--steel)" stroke-width="1.6"
+        stroke-opacity=".45" stroke-linejoin="round"/>
+      <path d="${paso}" fill="none" stroke="var(--brass)" stroke-width="2.2"
+        stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}${xLabels(has, X, H)}
+      <line class="cross" y1="${P.t}" y2="${H - P.b}" stroke="var(--ink-3)"
+        stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+      <rect class="hit" x="${P.l}" y="${P.t}" width="${W - P.l - P.r}"
+        height="${H - P.t - P.b}" fill="transparent"/>
+    </svg><div class="tip"></div></div>
+    <div class="legend">
+      <span><i style="background:var(--steel);opacity:.45"></i>1RM del día</span>
+      <span><i style="background:var(--brass)"></i>récord vigente</span>
+      <span>${nuevo.filter(Boolean).length} récords en ${has.length} sesiones medidas</span>
+    </div>`;
+
+  hover(box, has, i => X(i), i => Y(rec[i]), i => {
+    // desde cuándo aguanta el récord que estaba vigente ese día
+    let j = i; while (j > 0 && rec[j - 1] === rec[i]) j--;
+    const dias = Math.round((new Date(has[i].d + "T00:00")
+                           - new Date(has[j].d + "T00:00")) / 864e5);
+    return `<b>${has[i].e} kg</b><span class="m">${longd(has[i].d)} · ${
+      i === 0 ? "primera sesión medida: la línea de salida"
+      : nuevo[i] ? `nuevo récord, +${(rec[i] - rec[i - 1]).toFixed(1)} kg`
+      : `récord ${rec[i]} kg, sin moverse desde hace ${dias} d`}</span>`;
+  });
 }
 
 /* capa de hover común a todas las gráficas */
@@ -821,24 +1181,43 @@ function ampliable(caja, opciones) {
    OJO con los días "solo basal". Samsung escribe a veces un total que es
    exactamente su estimación de metabolismo basal, sin la parte de actividad,
    incluso en días con 10.000 pasos: se reconocen porque el número se repite
-   idéntico (2048.0) en decenas de días, mientras que un día real siempre
-   trae decimales. No son "días que quemaste poco", son días SIN dato de
-   actividad, y meterlos en las medias las hunde: con ellos, la diferencia
-   entre entrenar y descansar salía +736 kcal; sin ellos, +426.
+   idéntico en decenas de días (y ese número cambia con el tiempo, porque su
+   estimación de basal cambia), mientras que un día real siempre trae decimales
+   y nunca cae dos veces en el mismo número. No son "días que quemaste poco",
+   son días SIN dato de actividad, y meterlos en las medias las hunde: en datos
+   reales, la diferencia entre entrenar y descansar salía casi el doble de lo
+   que era.
 
    Se descartan de las medias y de la gráfica. Un hueco es más honesto que
    una línea plana que parece un dato.                                      */
 
-function tarjetaCalorias(d) {
+// separa los días con gasto de verdad de los que solo traen la basal apuntada
+function caloriasUtiles(d) {
   // la basal más reciente que haya dado la báscula
   const basal = [...d].reverse().find(x => x.br != null)?.br ?? null;
-
-  // un día real siempre suma algo por encima de la basal, aunque sean 2.000
-  // pasos; pegarse a ella al 1% es la huella de que falta la actividad
-  const soloBasal = x => basal != null && Math.abs(x.kc - basal) <= basal * 0.01;
-
   const todos = d.filter(x => x.kc != null);
-  const con = todos.filter(x => !soloBasal(x));
+
+  // el mismo número clavado en varios días es la basal que apunta Samsung
+  // cuando no registra actividad, no un gasto medido; la basal que usa cambia
+  // con el tiempo, así que no vale con comparar contra la de la báscula de hoy
+  const veces = {};
+  todos.forEach(x => { veces[x.kc] = (veces[x.kc] || 0) + 1; });
+  const soloBasal = x => veces[x.kc] >= 3 ||
+    (basal != null && Math.abs(x.kc - basal) <= basal * 0.01);
+
+  const sinBasal = todos.filter(x => !soloBasal(x));
+  // recorta la racha INICIAL por debajo de la basal: un total diario menor que
+  // tu metabolismo basal es imposible (la basal es el suelo del gasto), así que
+  // son estimaciones incompletas del móvil de antes de llevar medidor. En cuanto
+  // aparece el primer día real (>= basal) se deja de recortar; el resto no se toca.
+  let ini = 0;
+  if (basal != null) { while (ini < sinBasal.length && sinBasal[ini].kc < basal) ini++; }
+  if (ini >= sinBasal.length) ini = 0;
+  return { basal, todos, con: sinBasal.slice(ini) };
+}
+
+function tarjetaCalorias(d) {
+  const { basal, todos, con } = caloriasUtiles(d);
   const descartados = todos.length - con.length;
   if (con.length < 2) return "";
 
@@ -846,8 +1225,12 @@ function tarjetaCalorias(d) {
   const entD = con.filter(x => x.v), desD = con.filter(x => !x.v);
   const ent = media(entD.map(x => x.kc));
   const des = media(desD.map(x => x.kc));
-  const ult7 = media(con.slice(-7).map(x => x.kc));
   const hoy = con[con.length - 1];
+  // los últimos 7 días de calendario, no "los últimos 7 con dato": con huecos
+  // de por medio, lo segundo puede estar promediando un mes y llamarlo semana
+  const corte = new Date(hoy.d + "T00:00"); corte.setDate(corte.getDate() - 6);
+  const ventana7 = con.filter(x => new Date(x.d + "T00:00") >= corte);
+  const ult7 = media(ventana7.map(x => x.kc));
   const sobreBasal = basal != null ? hoy.kc - basal : null;
 
   // con tres días de descanso la comparación no dice nada; se calla en vez
@@ -869,10 +1252,11 @@ function tarjetaCalorias(d) {
       que quede <b>por encima de la línea</b> es lo que has añadido moviéndote.</p>` : ""}
     ${descartados ? `<p class="note">Quedan fuera <b>${descartados} días</b> en los que
       Samsung no registró actividad y apuntó solo la basal: no son días de quemar
-      poco, son días sin dato. Por eso la línea tiene huecos.</p>` : ""}
+      poco, son días sin dato. Por eso la gráfica empieza en ${longd(con[0].d)} y
+      tiene huecos.</p>` : ""}
     <div class="tiles wide">
       ${t(hoy.kc, longd(hoy.d))}
-      ${t(ult7, "Media 7 días")}
+      ${t(ult7, `Media 7 días (${ventana7.length} con dato)`)}
       ${t(ent, `Entrenando (${entD.length} días)`)}
       ${t(des, `Descansando (${desD.length} días)`)}
       ${comparable ? `<div class="tile">
@@ -890,27 +1274,97 @@ function tarjetaCalorias(d) {
   </div>`;
 }
 
+/* ---------- energía ----------
+   Lo que ninguna fuente da: si comes de más o de menos. No hace falta pesar
+   comida. Si el peso baja medio kilo por semana, estás ~550 kcal/día por
+   debajo de tu gasto, porque un kilo de tejido graso son ~7.700 kcal. Con el
+   gasto medido de Health Connect encima sale la ingesta aproximada.
+
+   El cálculo vive en insights.energia() (Python), aquí solo se pinta.       */
+
+function tarjetaEnergia() {
+  const e = IN.energia || {};
+  if (!Object.keys(e).length) return "";
+
+  if (e.faltan) {
+    return `<div class="card">
+      <h3>Balance energético</h3>
+      <p class="note">Cuánto comes de más o de menos, sin pesar comida</p>
+      <p class="blank">Hacen falta <b>${e.min_pesajes} pesajes</b> repartidos en
+        al menos <b>${e.min_dias} días</b> dentro de los últimos ${e.ventana};
+        ahora hay ${e.pesajes} en ${e.dias}. Pésate en ayunas tres o cuatro días
+        por semana y esto se llena solo.</p>
+    </div>`;
+  }
+
+  const sube = e.balance_kcal > 0;
+  const cls = Math.abs(e.balance_kcal) < 150 ? "flat" : sube ? "up" : "down";
+  return `<div class="card">
+    <h3>Balance energético</h3>
+    <p class="note">Estimado con la pendiente del peso entre ${longd(e.desde)} y
+      ${longd(e.hasta)} · ${e.pesajes} pesajes en ${e.dias} días</p>
+    <div class="tiles wide">
+      <div class="tile"><span class="v ${cls}">${e.kg_semana > 0 ? "+" : ""}${
+        num(e.kg_semana, 2)}<em>kg/sem</em></span>
+        <span class="l">Tendencia del peso</span></div>
+      <div class="tile"><span class="v ${cls}">${e.balance_kcal > 0 ? "+" : ""}${
+        num(e.balance_kcal)}<em>kcal</em></span>
+        <span class="l">Balance diario</span></div>
+      ${e.gasto_medio ? `<div class="tile"><span class="v">${num(e.gasto_medio)}<em>kcal</em></span>
+        <span class="l">Gasto medio (${e.dias_gasto} días)</span></div>` : ""}
+      ${e.ingesta_estimada ? `<div class="tile hl"><span class="v">${
+        num(e.ingesta_estimada)}<em>kcal</em></span>
+        <span class="l">Ingesta estimada</span></div>` : ""}
+    </div>
+    <p class="note" style="margin:12px 0 0">Un kilo de grasa son unas 7.700 kcal.
+      ${e.ingesta_estimada ? `Para mantener el peso tendrías que comer alrededor de
+      <b>${num(e.gasto_medio)} kcal</b>; por la tendencia, ahora mismo estás en
+      torno a <b>${num(e.ingesta_estimada)}</b>.` : ""}
+      En ventanas cortas la báscula mide agua además de grasa, por eso se piden
+      dos semanas.</p>
+  </div>`;
+}
+
 /* ================= secciones ================= */
 
 function sectionActividad() {
   const el = $("#sec-actividad");
   const d = DATA.daily;
+  const pasos = d.filter(x => x.st != null);
+  const noches = d.filter(x => x.sl != null);
+  const pulso = d.filter(x => x.ah != null || x.mh != null);
+  const kms = d.filter(x => x.km != null);
+
+  // eficiencia del sueño: del tiempo en la cama, cuánto duermes de verdad.
+  // El tiempo despierto lo recoge la app y no se pintaba en ningún sitio.
+  const conDespierto = noches.filter(x => x.sa != null);
+  const efi = conDespierto.length
+    ? conDespierto.reduce((a, x) => a + x.sl / (x.sl + x.sa), 0) / conDespierto.length * 100
+    : null;
+
   el.innerHTML = `<div class="cards">
     <div class="card"><h3>Constancia</h3><p class="note">Cada cuadro es un día</p>
       <div id="c-hm"></div></div>
     <div class="card"><h3>Volumen semanal</h3><p class="note">Toneladas levantadas por semana</p>
       <div id="c-vol"></div></div>
-    <div class="card"><h3>Pasos</h3><p class="note">Health Connect</p>
-      <div id="c-st"></div></div>
-    <div class="card"><h3>Sueño</h3><p class="note">Fases por noche, sin contar el tiempo despierto</p>
+    <div class="card"><h3>Pasos</h3><p class="note">Health Connect${
+      kms.length ? ` · ${num(kms[kms.length - 1].km, 1)} km el último día con dato` : ""}</p>
+      <div id="c-st"></div>
+      ${kms.length >= 2 ? `<div class="minigrid" style="margin-top:16px">
+        <div class="mini"><h4>Distancia (km)</h4><div id="c-km"></div></div></div>` : ""}
+    </div>
+    <div class="card"><h3>Sueño</h3><p class="note">Fases por noche, sin contar el tiempo despierto${
+      efi != null ? ` · eficiencia media ${efi.toFixed(0)}%` : ""}</p>
       <div id="c-sl"></div></div>
+    ${pulso.length >= 2 ? `<div class="card"><h3>Pulso</h3>
+      <p class="note">Medio y máximo del día, de Health Connect${
+        d.some(x => x.hr != null) ? "" : " · el reposo no lo escribe ninguna app todavía"}</p>
+      <div id="c-hr"></div></div>` : ""}
     ${tarjetaCalorias(d)}
+    ${tarjetaEnergia()}
   </div>`;
-  const basalKc = [...d].reverse().find(x => x.br != null)?.br ?? null;
-  const conKc = d.filter(x => x.kc != null &&
-    !(basalKc != null && Math.abs(x.kc - basalKc) <= basalKc * 0.01));
+  const { basal, con: conKc } = caloriasUtiles(d);
   if (conKc.length >= 2) {
-    const basal = basalKc;
     lineChart($("#c-kc"), conKc, "kc", {
       color: PAL.brass, unit: "kcal", label: "Calorías", avg: 7,
       ref: basal, refLabel: basal ? `basal ${Math.round(basal)}` : "",
@@ -952,7 +1406,6 @@ function sectionActividad() {
     dibuja: c => lineChart(c, semanas, "t", { unit: "t", zero: true, h: 420 }),
   });
 
-  const pasos = d.filter(x => x.st != null);
   lineChart($("#c-st"), pasos, "st",
             { avg: 7, unit: "pasos", zero: true, color: PAL.up, label: "Pasos diarios" });
   $("#c-st").closest(".card").classList.add("zoomable");
@@ -963,7 +1416,30 @@ function sectionActividad() {
                            { avg: 7, unit: "pasos", zero: true, color: PAL.up, h: 420 }),
   });
 
-  const noches = d.filter(x => x.sl != null);
+  if (kms.length >= 2) {
+    lineChart($("#c-km"), kms, "km",
+              { unit: "km", zero: true, color: PAL.steel, label: "Distancia", h: 150 });
+    ampliable($("#c-km").closest(".mini"), {
+      titulo: "Distancia", nota: "Kilómetros al día, de Health Connect",
+      stats: resumen(kms, "km", 1, "km"),
+      dibuja: c => lineChart(c, kms, "km", { unit: "km", zero: true, color: PAL.steel, h: 430 }),
+    });
+  }
+
+  if (pulso.length >= 2) {
+    // dos líneas en la misma caja: el máximo dice cuánto aprietas, el medio
+    // cuánto tiempo pasas apretando
+    dobleLinea($("#c-hr"), pulso, ["mh", "ah"], [PAL.down, PAL.steel],
+               ["máximo", "medio"], "ppm");
+    $("#c-hr").closest(".card").classList.add("zoomable");
+    ampliable($("#c-hr").closest(".card"), {
+      titulo: "Pulso", nota: "Pulso medio y máximo del día",
+      stats: resumen(pulso.filter(x => x.ah != null), "ah", 0, "ppm"),
+      dibuja: c => dobleLinea(c, pulso, ["mh", "ah"], [PAL.down, PAL.steel],
+                              ["máximo", "medio"], "ppm", 430),
+    });
+  }
+
   const fases = [["sd", "sr", "sli"], ["#2a78d6", "#5598e7", "#9ec5f4"],
                  ["profundo", "REM", "ligero"]];
   stackChart($("#c-sl"), noches, ...fases, { label: "Fases del sueño" });
@@ -973,6 +1449,57 @@ function sectionActividad() {
     stats: resumen(noches, "sl", 1, "h"),
     dibuja: c => stackChart(c, noches, ...fases, { h: 420 }),
   });
+}
+
+/* ---------- peso ----------
+   Un pesaje suelto no es tu peso: se mueve ~0,6 kg de un día a otro por agua,
+   sal y la hora a la que te subes. La tendencia (mediana de 7 días) y las
+   ventanas con referencia cercana son lo que hace comparable un día con otro.
+
+   Aquí van también la altura (que no la da ninguna fuente, pero sale de
+   peso e IMC), el FFMI y la cintura/altura.                                 */
+
+function tarjetaPeso(b) {
+  const c = IN.cuerpo || {}, pf = IN.perfil || {};
+  const t = c.tendencia || {};
+  const last = b[b.length - 1];
+
+  const dl = (v, n, dec = 1, bueno = false) => v == null
+    ? `<td title="No hay pesaje cerca de esa fecha">—</td>`
+    : `<td title="${n} días reales">${delta(v, 0, { dec, bueno })}</td>`;
+
+  return `<div class="card">
+    <h3>Peso</h3>
+    <p class="note">La tendencia es la mediana de los pesajes de 7 días: un
+      pesaje suelto se mueve ~0,6 kg de un día a otro por agua y por la hora</p>
+    <div class="tiles wide">
+      <div class="tile hl"><span class="v">${num(t.actual ?? last.kg, 1)}<em>kg</em></span>
+        <span class="l">Peso (tendencia)</span></div>
+      <div class="tile"><span class="v">${num(last.kg, 1)}<em>kg</em></span>
+        <span class="l">Último pesaje · ${longd(last.d)}</span></div>
+      ${pf.magra_kg ? `<div class="tile"><span class="v">${num(pf.magra_kg, 1)}<em>kg</em></span>
+        <span class="l">Masa magra estimada</span></div>` : ""}
+      ${pf.ffmi ? `<div class="tile"><span class="v">${num(pf.ffmi, 1)}</span>
+        <span class="l">FFMI (máx ${num(pf.ffmi_max, 1)})</span></div>` : ""}
+      ${pf.cintura_altura ? `<div class="tile"><span class="v ${
+        pf.cintura_altura < 0.5 ? "up" : "down"}">${num(pf.cintura_altura, 2)}</span>
+        <span class="l">${pf.cintura_es_abdomen ? "Abdomen" : "Cintura"}/altura</span></div>` : ""}
+      ${pf.altura_m ? `<div class="tile"><span class="v">${num(pf.altura_m, 2)}<em>m</em></span>
+        <span class="l">Altura (de peso e IMC)</span></div>` : ""}
+    </div>
+    ${t.actual != null ? `<table class="cmp" style="margin-top:6px">
+      <thead><tr><th></th><th>Ahora</th><th>7 d</th><th>30 d</th><th>90 d</th></tr></thead>
+      <tbody><tr><td>Tendencia</td><td>${num(t.actual, 1)} kg</td>
+        ${dl(t.d7, t.n7)}${dl(t.d30, t.n30)}${dl(t.d90, t.n90)}</tr></tbody></table>
+      <p class="note" style="margin-top:10px">Una casilla vacía es que no había
+      pesaje cerca de esa fecha. Antes se cogía el más reciente que hubiera, y
+      la columna de 7 días podía estar enseñando el cambio de un mes.</p>` : ""}
+    ${pf.cintura_altura ? `<p class="note" style="margin-top:4px">
+      ${pf.cintura_es_abdomen ? "Se usa el abdomen porque la cintura no se ha medido aún. " : ""}
+      Por debajo de <b>0,50</b> es el objetivo de salud habitual; estás en
+      <b>${num(pf.cintura_altura, 2)}</b> con ${num(pf.abdomen_cm ?? pf.cintura_cm, 1)} cm
+      medidos el ${longd(pf.cintura_fecha)}.</p>` : ""}
+  </div>`;
 }
 
 function sectionCuerpo() {
@@ -1057,6 +1584,7 @@ function sectionCuerpo() {
         <tbody>${filas}</tbody></table></div>
     </div>
     ${cinta.html}
+    ${tarjetaPeso(b)}
   </div>`;
 
   const color = { fa: PAL.down, fm: PAL.down, sc: PAL.down, vi: PAL.down,
@@ -1136,8 +1664,26 @@ function bloqueMedidas() {
       <td class="nota">${x.tn ? x.tn : ""}</td>
     </tr>`).join("");
 
+  // asimetria: por eso se miden los dos lados por separado. Un brazo 1 cm
+  // mayor que el otro no se ve en el espejo pero sale aqui.
+  const PARES = [["tbi", "tbd", "Brazo"], ["tai", "tad", "Antebrazo"],
+                 ["tmi", "tmd", "Muslo"], ["tgi", "tgd", "Gemelo"]];
+  const asim = PARES.filter(([i, d]) => last[i] != null && last[d] != null)
+    .map(([i, d, lbl]) => {
+      const dif = last[d] - last[i];
+      return `<div class="tile"><span class="v ${Math.abs(dif) >= 1 ? "down" : "flat"}">${
+        dif > 0 ? "+" : ""}${dif.toFixed(1)}<em>cm</em></span>
+        <span class="l">${lbl}: der − izq</span></div>`;
+    }).join("");
+
   const desde = longd(t[0].d);
   const html = `
+    ${asim ? `<div class="card">
+      <h3>Asimetría</h3>
+      <p class="note">Derecho menos izquierdo, en la última tanda (${longd(last.d)}).
+        Por debajo de 1 cm es ruido de medición; por encima, algo que mirar</p>
+      <div class="tiles wide">${asim}</div>
+    </div>` : ""}
     <div class="card">
       <h3>Cinta métrica</h3>
       <p class="note">${longd(last.d)}${prev ? " · el cambio es frente a la medición anterior, "
@@ -1201,35 +1747,80 @@ function tablaComparativa(a, b, etiquetas, filas) {
     </tr>`).join("")}</tbody></table>`;
 }
 
-function balanceMuscular(ms) {
-  // por desviación, no por volumen: lo interesante es lo que se ha movido
-  const top = [...ms].sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio)).slice(0, 10);
-  const max = Math.max(...top.map(m => Math.max(m.pct_reciente, m.pct_historico)), 1);
-  return `<div class="bal">${top.map(m => {
-    const col = m.desvio < -4 ? "var(--down)" : m.desvio > 4 ? "var(--up)" : "var(--steel)";
-    return `<div class="fila">
+/* Series efectivas por músculo y semana, contra una referencia externa.
+
+   Sustituye a comparar tu reparto contra tu propio histórico: con cinco
+   semanas de datos, el histórico ES el último mes, todos los desvíos salen
+   ~0 y el aviso "estás descuidando X" no puede saltar nunca. Aquí la
+   referencia es el rango que se suele recomendar (10-20 series por grupo y
+   semana), que no depende de cuánta historia tengas.                        */
+function seriesPorMusculo(ss) {
+  const ms = (ss && ss.musculos) || [];
+  if (!ms.length) return `<p class="blank">Sin entrenos suficientes.</p>`;
+  const max = Math.max(...ms.map(m => Math.max(m.media, 22)), 1);
+  const cls = e => e === "bajo" ? "down" : e === "alto" ? "flat" : "up";
+
+  return `<div class="bal">${ms.map(m => `
+    <div class="fila">
       <span class="nom" title="${m.musculo}">${m.musculo}</span>
-      <span class="barra" title="mes ${m.pct_reciente}% · histórico ${m.pct_historico}%">
-        <i style="width:${(m.pct_reciente / max * 100).toFixed(1)}%;background:${col}"></i>
-        <u style="left:${(m.pct_historico / max * 100).toFixed(1)}%"></u>
+      <span class="barra" title="Semana a semana: ${m.serie.join(", ")}">
+        <i style="width:${(m.media / max * 100).toFixed(1)}%;
+           background:var(--${cls(m.estado)})"></i>
+        <u style="left:${(10 / max * 100).toFixed(1)}%" title="10 series"></u>
+        <u style="left:${(20 / max * 100).toFixed(1)}%" title="20 series"></u>
       </span>
-      <span class="val" style="color:${m.desvio < -4 ? "var(--down)" : m.desvio > 4 ? "var(--up)" : "var(--ink-3)"}">
-        ${m.desvio > 0 ? "+" : ""}${m.desvio}</span>
-    </div>`;
-  }).join("")}
-  <p class="note" style="margin:6px 0 0">Barra: reparto del último mes. Marca gris:
-  tu reparto histórico. La cifra es la desviación en puntos.</p></div>`;
+      <span class="val">${num(m.media, 1)}${m.semanas_cero
+        ? `<span class="m" style="color:var(--ink-3)"> · ${m.semanas_cero}/${
+           ss.n_semanas} sem a 0</span>` : ""}</span>
+    </div>`).join("")}</div>
+  <p class="note" style="margin-top:12px">Media de series efectivas por semana en
+    las últimas ${ss.n_semanas} semanas (${num(ss.total_medio, 0)} en total). Las
+    dos marcas grises son 10 y 20 series, el rango donde suele estar el trabajo
+    que rinde. Pasa el ratón por una barra para ver semana a semana.</p>`;
 }
 
 function avisos() {
   const out = [];
-  const olvidados = (IN.musculos || []).filter(m => m.desvio < -4)
-    .sort((a, b) => a.desvio - b.desvio).slice(0, 3);
-  if (olvidados.length) {
-    out.push(["🦵", `Estás dejando de lado <b>${olvidados.map(m => m.musculo).join(", ")}</b>.
-      ${olvidados[0].musculo} era el ${olvidados[0].pct_historico}% de tu volumen
-      histórico y este mes es el ${olvidados[0].pct_reciente}%.`]);
+
+  // lo que falta contra una referencia externa, no contra tu propio histórico
+  const ss = IN.series_semanales || {};
+  const bajos = (ss.musculos || []).filter(m => m.estado === "bajo")
+    .sort((a, b) => a.media - b.media);
+  if (bajos.length) {
+    const peor = bajos[bajos.length - 1];
+    out.push(["🦵", `Por debajo de 10 series semanales: <b>${
+      bajos.map(m => m.musculo).join(", ")}</b>. ${peor.musculo} va a
+      ${num(peor.media, 1)} series de media y ha estado a cero
+      ${peor.semanas_cero} de las ${ss.n_semanas} semanas.`]);
   }
+  const altos = (ss.musculos || []).filter(m => m.estado === "alto");
+  if (altos.length) {
+    out.push(["📈", `Por encima de 22 series semanales: <b>${
+      altos.map(m => `${m.musculo} (${num(m.media, 1)})`).join(", ")}</b>.
+      Más no siempre es mejor si otros grupos van a cero.`]);
+  }
+
+  const en = IN.energia || {};
+  if (en.balance_kcal != null) {
+    const d = en.balance_kcal;
+    out.push([d < -100 ? "🔥" : d > 100 ? "🍽️" : "⚖️",
+      Math.abs(d) < 100
+        ? `El peso lleva ${en.dias} días plano: estás comiendo más o menos lo
+           que gastas.`
+        : `El peso va a <b>${num(en.kg_semana, 2)} kg por semana</b>, que es un
+           ${d < 0 ? "déficit" : "superávit"} de <b>${num(Math.abs(d))} kcal al
+           día</b>${en.ingesta_estimada ? `; comiendo en torno a
+           ${num(en.ingesta_estimada)} kcal` : ""}.`]);
+  }
+
+  const ci = IN.cinta || {};
+  if (ci.toca) {
+    out.push(["📏", ci.tandas
+      ? `Hace <b>${ci.dias} días</b> de la última tanda de cinta métrica
+         (toca cada ${ci.cada}).`
+      : `No has tomado ninguna medida de cinta todavía.`]);
+  }
+
   const c = IN.cuerpo || {};
   if (c.grasa_kg?.d90 != null && c.musculo?.d90 != null) {
     const g = c.grasa_kg.d90, m = c.musculo.d90;
@@ -1279,6 +1870,7 @@ function sectionResumen() {
   const cuenta = e => est.filter(x => x.estado === e).length;
 
   const cuerpoFilas = [
+    ...(c.tendencia?.actual != null ? [["tendencia", "Peso (tendencia 7 d)", "kg", 1, false]] : []),
     ["peso", "Peso", "kg", 1, false],
     ["grasa_kg", "Grasa", "kg", 1, false],
     ["musculo", "Músculo", "kg", 1, true],
@@ -1330,18 +1922,20 @@ function sectionResumen() {
     </div>
 
     <div class="duo">
-      <div class="card"><h3>Equilibrio muscular</h3>
-        <p class="note">Reparto del último mes contra tu histórico</p>
-        ${balanceMuscular(IN.musculos || [])}
+      <div class="card"><h3>Series por músculo</h3>
+        <p class="note">Media semanal contra el rango que rinde, no contra tu histórico</p>
+        ${seriesPorMusculo(IN.series_semanales || {})}
       </div>
       <div class="card"><h3>Composición corporal</h3>
-        <p class="note">${cuerpoFilas.length ? "Cambio a 7, 30 y 90 días" : ""}</p>
+        <p class="note">${cuerpoFilas.length
+          ? "Cambio a 7, 30 y 90 días · una casilla vacía es que no hubo pesaje cerca"
+          : ""}</p>
         ${cuerpoFilas.length ? `<table class="cmp">
           <thead><tr><th></th><th>Ahora</th><th>7 d</th><th>30 d</th><th>90 d</th></tr></thead>
           <tbody>${cuerpoFilas.map(([k, lbl, u, dec, bueno]) => `<tr>
             <td>${lbl}</td>
             <td>${num(c[k].actual, dec)}${u}</td>
-            ${[7, 30, 90].map(dd => `<td>${
+            ${[7, 30, 90].map(dd => `<td${c[k]["n" + dd] ? ` title="${c[k]["n" + dd]} días reales"` : ""}>${
               c[k]["d" + dd] == null ? "—" : delta(c[k].actual, c[k].actual - c[k]["d" + dd],
                                                    { dec, bueno })}</td>`).join("")}
           </tr>`).join("")}</tbody></table>`

@@ -186,23 +186,56 @@ def build(client: NotionClient, db_ids: dict[str, str], page_id: str,
         f"Pasos/dia: {cambio(sem['pasos'], prev['pasos'])}",
         f"Sueno: {cambio(sem['sueno'], prev['sueno'], ' h', 2)}",
     ]
-    if cue.get("peso", {}).get("actual"):
-        g, m = cue.get("grasa_kg", {}), cue.get("musculo", {})
-        lineas.append(
-            f"Peso: {cue['peso']['actual']} kg"
-            + (f" ({cue['peso']['d30']:+.1f} en 30 dias)" if cue["peso"].get("d30") else ""))
-        if g.get("d90") is not None and m.get("d90") is not None:
-            lineas.append(f"En 90 dias: {g['d90']:+.1f} kg de grasa, "
-                          f"{m['d90']:+.1f} kg de musculo")
+
+    # el peso que se ensena es la tendencia (mediana de 7 dias), no el ultimo
+    # pesaje: uno suelto se mueve ~0,6 kg de un dia a otro solo por el agua
+    ten = cue.get("tendencia", {})
+    if ten.get("actual"):
+        linea = f"Peso (tendencia 7 d): {ten['actual']} kg"
+        if ten.get("d30") is not None:
+            linea += f" ({ten['d30']:+.1f} en {ten.get('n30', 30)} dias)"
+        lineas.append(linea)
+    elif cue.get("peso", {}).get("actual"):
+        lineas.append(f"Peso: {cue['peso']['actual']} kg")
+
+    ene = ins.get("energia", {})
+    if ene.get("balance_kcal") is not None:
+        signo = "deficit" if ene["balance_kcal"] < 0 else "superavit"
+        linea = (f"Balance: {ene['kg_semana']:+.2f} kg/semana"
+                 f" = {signo} de {abs(ene['balance_kcal']):,.0f} kcal/dia")
+        if ene.get("ingesta_estimada"):
+            linea += f" (comiendo ~{ene['ingesta_estimada']:,.0f} kcal)"
+        lineas.append(linea)
+
+    pf = ins.get("perfil", {})
+    if pf.get("cintura_altura"):
+        cual = "abdomen" if pf.get("cintura_es_abdomen") else "cintura"
+        lineas.append(f"{cual.capitalize()}/altura: {pf['cintura_altura']:.2f}"
+                      f" (objetivo por debajo de 0,50)")
 
     p.heading("Esta semana")
     p.bullets(lineas)
 
-    olvidados = [x for x in ins["musculos"] if x["desvio"] < -4][:3]
-    if olvidados:
-        p.callout("Estas descuidando: " + ", ".join(
-            f"{x['musculo']} ({x['pct_reciente']}% este mes frente a "
-            f"{x['pct_historico']}% historico)" for x in olvidados), "\U0001f9b5")
+    # Series semanales por musculo contra una referencia externa (10-20). El
+    # reparto contra el propio historico no servia: con pocas semanas de
+    # datos el historico ES el ultimo mes y el desvio siempre salia ~0.
+    ss = ins.get("series_semanales", {})
+    bajos = [m for m in ss.get("musculos", []) if m["estado"] == "bajo"]
+    if bajos:
+        peor = max(bajos, key=lambda m: m["media"])
+        p.callout(
+            "Por debajo de 10 series semanales: "
+            + ", ".join(f"{m['musculo']} ({m['media']})" for m in bajos)
+            + f". {peor['musculo']} ha estado a cero {peor['semanas_cero']} de las "
+              f"{ss['n_semanas']} ultimas semanas.", "\U0001f9b5")
+
+    ci = ins.get("cinta", {})
+    if ci.get("toca"):
+        p.callout(
+            f"Hace {ci['dias']} dias de la ultima tanda de cinta metrica (toca cada "
+            f"{ci.get('cada', 14)})." if ci.get("tandas")
+            else "Todavia no hay ninguna medida de cinta metrica.",
+            "\U0001f4cf")
 
     if dashboard_url:
         p.heading("Panel")

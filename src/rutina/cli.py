@@ -83,6 +83,18 @@ def load_health(cfg: Config):
     daily = merge_fields([], DailyHealth, "health_daily.jsonl")
     body = merge_fields([], BodyMeasurement, "body.jsonl")
     log.info("Salud: %d dias, %d pesajes (historico local)", len(daily), len(body))
+
+    # Que campos no ha escrito NUNCA ninguna app. Sus columnas existen en
+    # Notion y sus huecos en el dashboard, y sin esto no hay forma de saber si
+    # falta un permiso, falta el reloj, o es que ese dato no lo da nadie.
+    if daily:
+        from dataclasses import fields as _fields
+        vacios = [f.name for f in _fields(DailyHealth)
+                  if f.name != "day"
+                  and all(getattr(d, f.name, None) is None for d in daily)]
+        if vacios:
+            log.warning("Sin un solo dato en %d campos de salud: %s",
+                        len(vacios), ", ".join(vacios))
     return daily, body
 
 

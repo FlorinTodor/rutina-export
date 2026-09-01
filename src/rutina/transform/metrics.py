@@ -117,7 +117,11 @@ def build_exercise_stats(
             st.last_performed = w.day
             seen_sessions[key].add(w.day)
 
-            if s.weight_kg and (st.best_weight_kg is None or s.weight_kg > st.best_weight_kg):
+            # A igualdad de peso gana la de mas repeticiones: 70x12 es mejor
+            # serie que 70x10 con el mismo disco. Con ">" a secas se quedaba
+            # la primera que apareciera, que solia ser la peor.
+            if s.weight_kg and ((s.weight_kg, s.reps or 0)
+                                > (st.best_weight_kg or 0, st.best_weight_reps or 0)):
                 st.best_weight_kg = s.weight_kg
                 st.best_weight_reps = s.reps
                 st.best_weight_date = w.day

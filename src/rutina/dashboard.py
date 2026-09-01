@@ -41,6 +41,32 @@ def _slug(nombre: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-")
 
 
+# Salto de peso por defecto cuando toca subir. Es el disco pequeño de casi
+# cualquier mancuerna o placa; en máquinas de placas el salto real puede ser
+# mayor y entonces esto es una orientación, no una orden.
+INCREMENTO_KG = 2.5
+TOPE_REPS = 12
+
+
+def _siguiente(pts: list[dict]) -> dict | None:
+    """Qué toca la próxima vez, por doble progresión.
+
+    Se sube de repeticiones hasta el tope y solo entonces de peso, volviendo
+    abajo del rango. Sale de la mejor serie de la última sesión, que es lo
+    que de verdad hiciste, y no del recuerdo.
+    """
+    if not pts:
+        return None
+    u = pts[-1]
+    peso, reps = u.get("w") or 0, u.get("r") or 0
+    if not peso or not reps:
+        return None
+    if reps < TOPE_REPS:
+        return {"w": peso, "r": reps + 1, "sube": "reps", "de": f"{peso:g}×{reps}"}
+    return {"w": round(peso + INCREMENTO_KG, 1), "r": 8, "sube": "peso",
+            "de": f"{peso:g}×{reps}"}
+
+
 def build_payload(workouts: list[Workout], rows: list[DayRow],
                   stats: list[ExerciseStats], templates: dict | None = None,
                   desde: str = "") -> dict:
@@ -55,13 +81,22 @@ def build_payload(workouts: list[Workout], rows: list[DayRow],
     sessions: dict[str, dict[str, dict]] = defaultdict(dict)
     for w in sorted(workouts, key=lambda x: x.start_time):
         agg: dict[str, dict] = defaultdict(
-            lambda: {"e1rm": 0.0, "vol": 0.0, "w": 0, "r": 0, "sets": 0})
+            lambda: {"e1rm": 0.0, "vol": 0.0, "w": 0, "r": 0, "sets": 0,
+                     "reps": 0, "seg": 0, "bw": 0, "br": 0})
         for s in w.sets:
             if s.set_type == "warmup":
                 continue
             a = agg[s.exercise_key]
             a["vol"] += s.volume_kg
             a["sets"] += 1
+            a["reps"] += s.reps or 0
+            a["seg"] += s.duration_seconds or 0
+            # La serie mas pesada del dia, haya o no e1RM. Por encima de 12
+            # repeticiones Epley se calla, y sin este respaldo esas sesiones
+            # salian en el panel como "0x0" aunque hubieras movido tres
+            # toneladas. En datos reales, casi uno de cada cinco puntos.
+            if (s.weight_kg or 0, s.reps or 0) > (a["bw"], a["br"]):
+                a["bw"], a["br"] = s.weight_kg or 0, s.reps or 0
             if s.e1rm_kg and s.e1rm_kg > a["e1rm"]:
                 a["e1rm"] = s.e1rm_kg
                 a["w"] = s.weight_kg or 0
@@ -72,8 +107,12 @@ def build_payload(workouts: list[Workout], rows: list[DayRow],
 
     exercises = []
     for e in stats:
+        # v: kilos movidos ese dia · n: repeticiones efectivas · t: minutos
+        # (solo los ejercicios de tiempo los traen) · w x r: la mejor serie
         pts = [{"d": d, "e": round(a["e1rm"], 1), "v": round(a["vol"]),
-                "w": a["w"], "r": a["r"], "s": a["sets"]}
+                "w": a["w"] or a["bw"], "r": a["r"] or a["br"],
+                "s": a["sets"], "n": a["reps"],
+                **({"t": round(a["seg"] / 60)} if a["seg"] else {})}
                for d, a in sorted(sessions[e.key].items())]
         if not pts:
             continue
@@ -98,11 +137,16 @@ def build_payload(workouts: list[Workout], rows: list[DayRow],
             "propia": bool(propia),
             "gif": gif_url(found) if found else None,
             "sessions": e.sessions, "vol": round(e.total_volume_kg),
+            # dos records distintos, y por eso van con su fecha: prW es el
+            # peso mas alto que has movido de verdad, prE el mayor 1RM
+            # estimado. No tienen por que caer el mismo dia.
             "prW": e.best_weight_kg, "prR": e.best_weight_reps,
+            "prWDate": e.best_weight_date.isoformat() if e.best_weight_date else None,
             "prE": e.best_e1rm_kg,
             "prDate": e.best_e1rm_date.isoformat() if e.best_e1rm_date else None,
             "last": e.last_performed.isoformat() if e.last_performed else None,
             "trend": round(trend, 1), "pts": pts, "aliases": e.aliases,
+            "next": _siguiente(pts),
         })
 
     # una fila por dia con TODO: entreno, actividad y composicion corporal
@@ -119,6 +163,9 @@ def build_payload(workouts: list[Workout], rows: list[DayRow],
                               ("sl", "sleep_hours"), ("sd", "sleep_deep_h"),
                               ("sr", "sleep_rem_h"), ("sli", "sleep_light_h"),
                               ("sa", "sleep_awake_h"), ("hr", "resting_hr"),
+                              # pulso medio y máximo: los recogía la app y se
+                              # quedaban en el JSONL sin llegar nunca al panel
+                              ("ah", "avg_hr"), ("mh", "max_hr"),
                               ("hv", "hrv_ms")):
                 v = getattr(h, attr, None)
                 if v is not None:
