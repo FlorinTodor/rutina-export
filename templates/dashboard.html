@@ -1085,8 +1085,11 @@ function heatmap(box, daily) {
         fill="var(--ink-3)">${MES[dt.getMonth()]}</text>`;
     }
   }
+  // El SVG se estira al ancho de la tarjeta, y con pocas semanas eso deja
+  // cuadros de 70 px que parecen otra cosa. El tope los deja en ~18 px pase
+  // lo que pase; con un año entero de historia no llega a aplicarse.
   box.innerHTML = `<div class="chartbox"><svg class="hm"
-    viewBox="0 0 ${cols * cw} ${7 * cw + 18}"
+    viewBox="0 0 ${cols * cw} ${7 * cw + 18}" style="max-width:${cols * 22}px"
     role="img" aria-label="Días entrenados">${cells}${months}</svg>
     <div class="tip"></div></div>
     <div class="legend"><span>${days.length} días entrenados · el color es el volumen</span></div>`;
