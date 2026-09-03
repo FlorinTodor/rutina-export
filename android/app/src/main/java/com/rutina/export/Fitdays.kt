@@ -4,6 +4,7 @@ import android.content.Context
 import android.provider.Settings
 import android.util.Log
 import com.rutina.export.Ajustes.fitdaysPendiente
+import com.rutina.export.Ajustes.subirFitdays
 import java.time.LocalDate
 
 /**
@@ -25,6 +26,15 @@ object Fitdays {
 
     /** Exporta ya si se puede; si no, lo deja apuntado para el proximo desbloqueo. */
     fun intentarOEsperar(ctx: Context) {
+        // La casilla de la pantalla. Se comprueba aqui y no en cada sitio que
+        // llama, que son dos (el boton de subir y el trabajo diario) y es facil
+        // que manana sean tres.
+        if (!ctx.subirFitdays) {
+            Log.i(TAG, "FitDays: desmarcado en la pantalla, no lo toco")
+            // que un pendiente de antes de desmarcarlo no salte al desbloquear
+            ctx.fitdaysPendiente = ""
+            return
+        }
         if (!servicioActivo(ctx)) {
             Log.i(TAG, "FitDays: el servicio de accesibilidad esta apagado, no lo intento")
             return
@@ -41,7 +51,7 @@ object Fitdays {
     }
 
     fun hayPendiente(ctx: Context): Boolean =
-        ctx.fitdaysPendiente == LocalDate.now().toString()
+        ctx.subirFitdays && ctx.fitdaysPendiente == LocalDate.now().toString()
 
     fun marcarHecho(ctx: Context) {
         ctx.fitdaysPendiente = ""

@@ -20,6 +20,7 @@ object Ajustes {
     private const val ULTIMA = "ultima_subida"
     private const val DIAS = "dias"
     private const val PENDIENTE = "fitdays_pendiente"
+    private const val SUBIR_FITDAYS = "subir_fitdays"
     private const val DOCS = "carpeta_docs"
     private const val RUTA = "ruta"
     private const val MEDIDAS = "medidas"
@@ -61,6 +62,22 @@ object Ajustes {
     var Context.horaMin: Int
         get() = prefs(this).getInt(HORA, 20 * 60 + 45)
         set(v) { prefs(this).edit().putInt(HORA, v.coerceIn(0, 24 * 60 - 1)).apply() }
+
+    /**
+     * Si FitDays entra o no en la subida.
+     *
+     * Marcado por defecto: lo normal es subirlo todo. Se desmarca los dias en
+     * que solo interesa lo que ya esta en el movil sin tocar nada (reloj y
+     * Hevy) y no apetece que la app abra FitDays y pase 45 segundos pulsando
+     * botones por su cuenta.
+     *
+     * Se guarda, asi que tambien se salta la ejecucion automatica mientras
+     * este desmarcado. Es a proposito: una casilla que se vuelve a marcar
+     * sola esconderia que el movil sigue abriendo FitDays cada noche.
+     */
+    var Context.subirFitdays: Boolean
+        get() = prefs(this).getBoolean(SUBIR_FITDAYS, true)
+        set(v) { prefs(this).edit().putBoolean(SUBIR_FITDAYS, v).apply() }
 
     /** Dia (ISO) para el que queda pendiente exportar FitDays, o "" si no. */
     var Context.fitdaysPendiente: String

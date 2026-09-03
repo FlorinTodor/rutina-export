@@ -28,10 +28,12 @@ import com.rutina.export.Ajustes.dias
 import com.rutina.export.Ajustes.horaMin
 import com.rutina.export.Ajustes.repo
 import com.rutina.export.Ajustes.ruta
+import com.rutina.export.Ajustes.subirFitdays
 import com.rutina.export.Ajustes.token
 import com.rutina.export.Ajustes.ultimaSubida
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.Dispatchers
@@ -211,10 +213,18 @@ class MainActivity : ComponentActivity() {
                   else -> "$repo · $ruta"
               })
         punto(Fitdays.servicioActivo(this), "Accesibilidad",
-              if (Fitdays.servicioActivo(this)) "activa, para FitDays" else "apagada: FitDays no se exportará",
+              when {
+                  Fitdays.servicioActivo(this) -> "activa, para FitDays"
+                  !subirFitdays -> "apagada, y FitDays está desmarcado más abajo"
+                  else -> "apagada: FitDays no se exportará"
+              },
               "Activar" to { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) })
         punto(carpetaDocs.isNotEmpty(), "Carpeta Documents",
-              if (carpetaDocs.isEmpty()) "sin dar: no puedo leer el CSV de FitDays" else "concedida",
+              when {
+                  carpetaDocs.isNotEmpty() -> "concedida"
+                  !subirFitdays -> "sin dar, y FitDays está desmarcado más abajo"
+                  else -> "sin dar: no puedo leer el CSV de FitDays"
+              },
               "Dar acceso" to {
                   pedirCarpeta.launch(Uri.parse(
                       "content://com.android.externalstorage.documents/document/primary%3ADocuments"))
@@ -264,6 +274,7 @@ class MainActivity : ComponentActivity() {
 
         // --- acciones ---
         raiz.addView(rotulo("Ahora mismo"))
+        raiz.addView(casillaFitdays())
         raiz.addView(boton("Exportar y subir ahora", principal = true) {
             if (repo.isEmpty() || token.isEmpty()) decir("Configura antes GitHub, más abajo")
             else exportar(subir = true)
@@ -286,6 +297,8 @@ class MainActivity : ComponentActivity() {
         raiz.addView(boton("Apuntar medidas de cinta") {
             startActivity(Intent(this, MedidasActivity::class.java))
         })
+        // Este NO mira la casilla: si lo pulsas es que quieres FitDays ahora,
+        // desmarcado o no. La casilla decide lo que se hace SOLO.
         raiz.addView(boton("Exportar FitDays ahora") {
             if (!Fitdays.servicioActivo(this)) decir("Activa antes la accesibilidad")
             else if (carpetaDocs.isEmpty()) decir("Da antes acceso a la carpeta Documents")
@@ -334,6 +347,47 @@ class MainActivity : ComponentActivity() {
             })
             pintar()
         })
+    }
+
+    /**
+     * La casilla que deja fuera FitDays.
+     *
+     * Health Connect se lee en segundo plano en dos segundos; FitDays no: hay
+     * que abrir su app y pasar 45 segundos pulsando botones con la pantalla
+     * encendida y sin tocarla. Hay dias en que solo se quiere lo que ya esta
+     * recogido (el reloj, y lo de Hevy que sube el workflow) sin pagar ese
+     * peaje, y hasta ahora la unica forma era apagar la accesibilidad entera.
+     *
+     * Marcada por defecto, y lo que decide se guarda: mientras este
+     * desmarcada, tampoco lo hace la ejecucion automatica. Por eso lo dice en
+     * voz alta debajo en vez de dejarlo callado.
+     */
+    private fun casillaFitdays(): LinearLayout {
+        val caja = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+                .apply { bottomMargin = dp(8) }
+        }
+        caja.addView(MaterialCheckBox(this).apply {
+            text = "Subir también FitDays (la báscula)"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            isChecked = subirFitdays
+            isEnabled = !trabajando
+            // se pone el estado ANTES de escuchar, para no guardar de rebote
+            setOnCheckedChangeListener { _, marcada ->
+                subirFitdays = marcada
+                pintar()          // rehace la pantalla, y con ella el aviso
+                decir(if (marcada)
+                          "FitDays vuelve a entrar en la subida."
+                      else "Solo Health Connect y las medidas. FitDays queda fuera " +
+                           "también de la ejecución automática, hasta que lo vuelvas a marcar.")
+            }
+        })
+        caja.addView(parrafo(if (subirFitdays)
+                "Tras subir la salud, abre FitDays y exporta los pesajes. Tarda unos " +
+                "45 segundos con la pantalla encendida."
+            else "FitDays no se abrirá: ni ahora ni a las ${TrabajoDiario.hora(this)}."))
+        return caja
     }
 
     /**

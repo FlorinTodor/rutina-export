@@ -34,6 +34,14 @@ día se marca como pendiente y se aprovecha el primer desbloqueo que haya
 (`ACTION_USER_PRESENT`). Lo que sí necesita puntualidad diaria es Health
 Connect, que es justo la mitad que funciona bloqueada.
 
+La casilla **«Subir también FitDays»**, marcada por defecto, deja fuera esa
+segunda mitad. Los días que solo interesa lo ya recogido —el reloj, y lo de
+Hevy que sube el workflow— evita los 45 segundos de pantalla encendida
+pulsando botones ajenos. Se guarda: mientras esté desmarcada tampoco lo hace
+la ejecución de las 20:45, y la pantalla lo dice debajo de la casilla. El
+botón *Exportar FitDays ahora* la ignora a propósito: si lo pulsas, lo
+quieres.
+
 ## Preparación, una sola vez
 
 1. **Instalar**: `./build.sh && python ../scripts/health_pull.py --instalar`
