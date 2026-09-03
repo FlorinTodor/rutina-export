@@ -26,6 +26,12 @@ jobs:
       - name: El historico sobrevive a una ventana corta
         run: python tests/test_history.py
 
+      - name: Las metricas derivadas no mienten
+        # Estaba escrito desde el principio y no lo ejecutaba nadie: el fallo
+        # del "6 en 5" en el balance energetico llego al dashboard publicado
+        # teniendo aqui un test que lo habria visto.
+        run: python tests/test_insights.py
+
       - name: La sincronizacion es idempotente
         run: python tests/test_sync_offline.py
 

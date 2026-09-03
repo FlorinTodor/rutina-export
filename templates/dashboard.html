@@ -1290,13 +1290,25 @@ function tarjetaEnergia() {
   if (!Object.keys(e).length) return "";
 
   if (e.faltan) {
+    /* Dos carencias distintas, y confundirlas manda a pesarse mas a quien ya
+       se pesa a diario: o faltan pesajes, o falta el RECORRIDO entre el
+       primero y el ultimo. Seis pesajes en seis dias seguidos cumplen lo
+       primero de sobra y no lo segundo. */
+    const cortos = e.pesajes < e.min_pesajes;
     return `<div class="card">
       <h3>Balance energético</h3>
       <p class="note">Cuánto comes de más o de menos, sin pesar comida</p>
-      <p class="blank">Hacen falta <b>${e.min_pesajes} pesajes</b> repartidos en
-        al menos <b>${e.min_dias} días</b> dentro de los últimos ${e.ventana};
-        ahora hay ${e.pesajes} en ${e.dias}. Pésate en ayunas tres o cuatro días
-        por semana y esto se llena solo.</p>
+      <p class="blank">${cortos
+        ? `Hacen falta <b>${e.min_pesajes} pesajes</b> que abarquen
+           <b>${e.min_dias} días</b> dentro de los últimos ${e.ventana}; ahora hay
+           <b>${e.pesajes}</b>, en ${e.dias} ${e.dias === 1 ? "día" : "días"}.
+           Pésate en ayunas tres o cuatro días por semana y esto se llena solo.`
+        : `Pesajes hay de sobra (<b>${e.pesajes}</b>): lo que falta es
+           <b>recorrido</b>. Del primero al último tienen que pasar
+           <b>${e.min_dias} días</b> para que la pendiente sea grasa y no el agua
+           de la semana, y de momento abarcan ${e.dias}.${e.listo_el
+             ? ` Si sigues pesándote, esto se llena el <b>${longd(e.listo_el)}</b>.`
+             : ""}`}</p>
     </div>`;
   }
 

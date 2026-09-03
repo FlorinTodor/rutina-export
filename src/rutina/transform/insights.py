@@ -242,12 +242,25 @@ def energia(rows: list[DayRow], dias: int = 28) -> dict:
     v = [(d, w) for d, w in pesajes if d >= ini]
     # con menos de esto la "tendencia" es el agua de un día concreto; se dice
     # lo que falta en vez de dar un número que suena a medición
+    #
+    # `abarcan` se cuenta INCLUSIVO, como en la rama de abajo. Antes esta
+    # devolvía la resta pelada y la otra la resta más uno, con el mismo nombre
+    # (`dias`), así que seis pesajes en seis días seguidos se anunciaban como
+    # "6 en 5" y no había forma de entender ese 5. Y el 5 tampoco era lo que
+    # parecía: no es cuántos días tienen pesaje, es cuánto separa al primero
+    # del último, que es lo que de verdad se exige.
     MIN_PESAJES, MIN_DIAS = 4, 14
-    span = (v[-1][0] - v[0][0]).days if len(v) >= 2 else 0
-    if len(v) < MIN_PESAJES or span < MIN_DIAS:
-        return {"faltan": True, "pesajes": len(v), "dias": span,
-                "min_pesajes": MIN_PESAJES, "min_dias": MIN_DIAS,
-                "ventana": dias}
+    abarcan = (v[-1][0] - v[0][0]).days + 1 if v else 0
+    if len(v) < MIN_PESAJES or abarcan < MIN_DIAS:
+        out = {"faltan": True, "pesajes": len(v), "dias": abarcan,
+               "min_pesajes": MIN_PESAJES, "min_dias": MIN_DIAS,
+               "ventana": dias}
+        # Si los pesajes ya sobran y lo unico que falta es recorrido, la fecha
+        # en que se cumple esta decidida: el primero de la ventana mas los dias
+        # que hay que abarcar. Es mejor dato que "sigue pesandote": dice cuando.
+        if len(v) >= MIN_PESAJES:
+            out["listo_el"] = (v[0][0] + timedelta(days=MIN_DIAS - 1)).isoformat()
+        return out
 
     # regresión lineal del peso contra el día: la pendiente es la tendencia
     xs = [(d - v[0][0]).days for d, _ in v]
